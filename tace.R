@@ -9,10 +9,9 @@ dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/TACE%20data%20feature
 initTarget <- "liver_TTP"	# Target variable; will be refactored into binary categories
 split <- 21			# Target data greater than this variable will be 1; else 0
 partition <- 0.7 		# % of data in training set
-iterations <- 1
+iterations <- 1			# Number of rf iterations
 
 # Create list of input variables
-
 print("Creating input variable list")
 input <- NULL
 ignore <- c(initTarget, "liver_Metastasis..yes.1..No.0.", "liver_Lymphnodes..yes.1..No.0.")
@@ -22,18 +21,18 @@ if(is.null(input)) {
 	}
 
 # Create binary classification of target
-
 print("Converting target data to binary classification")
 binaryTarget <- as.factor(ifelse(dataset[,initTarget] > 21, 1, 0))
 dataset <- cbind(binaryTarget, dataset)
 target = "binaryTarget"
 
 # Rank input variables by highest correlation
-# Only use top 50 variable
-
 cors <- rankCor(dataset,initTarget,input)
+# Extract top X variables by correlation
 input <- input[cors[1:200]]
 
+# Removes variables that are highly correlated to reduce redundancy in data
+# Set loop=TRUE to do this. Correlation threshhold > 0.8
 loop <- FALSE
 while(loop) {
 	cmb <- combn(length(input),2)
@@ -51,35 +50,33 @@ while(loop) {
 		loop <- FALSE
 	}
 }
-
-#cors <- rankCor(dataset,initTarget,input)
-#input <- input[sort(cors[1:10])]
-
 print(input)
 
-#iccor <- icc(dataset[,input])
-#print(iccor$value)
-
+# Plot data matrix to see correlations between variables. Saves to pdf
 #plotData <- dataset[sample(seq_len(nrow(dataset)),50),c(initTarget,input[7:12])]
 plotData <- dataset[sample(seq_len(nrow(dataset)),50),c(initTarget,input[runif(6,1,length(input))])]
 pointColor <- ifelse(plotData[,initTarget] > 21, "red", "blue")
 pairs(plotData[,2:ncol(plotData)], col=pointColor)
 
-break
-###################
-
-# Run rf
-
+# Create vector for errors and random seeds
 print("Building rf model(s)")
 errors <- vector()
 s <- round(10000*runif(iterations))
 
+# Use same sample set for each iteration
 #sets <- sampleSets(dataset,target,partition)
 
+# Build n randomForest w/ random seed where n=iterations
 for(i in 1:iterations) {
 	cat("\nRUN:", i, "\n")
+
+	# Randomly sample test and train set
 	sets <- sampleSets(dataset,target,partition)
-	print(rfcv(dataset[sets$train,input],dataset[sets$train,target],scale="log",step=0.5)$error.cv)
+
+	# Display error as function of num variables
+	#print(rfcv(dataset[sets$train,input],dataset[sets$train,target],scale="log",step=0.5)$error.cv)
+	
+	# Build RF model and save error result
 	result<- rfModel(dataset,target,input,sets$train,sets$test,seed=s[i])
 	errors <- c(errors, result$error)
 
