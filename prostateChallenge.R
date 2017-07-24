@@ -1,3 +1,4 @@
+library(randomForest, quietly=TRUE)
 source("utils.R")
 
 # Load data
@@ -7,7 +8,7 @@ data <- read.csv("file:///home/gpauloski/git-repos/ProstateChallenge/truthadcdat
 
 # Model Parameters
 
-partition <- 0.7	# % of data to be used in test set
+partition <- 0.5	# % of data to be used in test set
 split <- 4		# if 4; Z = 1 for ggg = 1,2,3
 			# elseif 3; Z = 1 for ggg = 1,2
 iterations <- 1000	# number of iterations
@@ -20,11 +21,31 @@ data$ggg <- as.factor(data$ggg)
 
 # Define input/target/ignore variables
 
-input <- c("KTRANS.reslice", "T2Axial.norm", "ADC.reslice", "T2Sag.norm", 
+input <- c("Volume", "KTRANS.reslice", "T2Axial.norm", "ADC.reslice", "T2Sag.norm", 
 	"T2Axial.Entropy_4", "T2Axial.HaralickCorrelation_4", "BVAL.reslice")
 target <- "Z"
 input2 <- c(input, "Z2")
 target2 <- "ggg"
+
+plotData <- data[sample(seq_len(nrow(data)),30),c(target2,input)]
+pointColor <- vector()
+for(i in 1:nrow(plotData)) {
+	if(plotData[i,target2]==1) {
+		pointColor <- c(pointColor, "red")
+	} else if(plotData[i,target2]==2) {
+		pointColor <- c(pointColor, "green")
+	} else if(plotData[i,target2]==3) {
+		pointColor <- c(pointColor, "purple3")
+	} else if(plotData[i,target2]==4) {
+		pointColor <- c(pointColor, "blue")
+	} else {
+		pointColor <- c(pointColor, "black")
+	} 
+}
+pairs(plotData[,2:ncol(plotData)],col=pointColor)
+
+break
+################################
 
 # Create RF model(s)
 
@@ -39,22 +60,32 @@ for(i in 1:iterations) {
 	sets <- sampleSets(data,target,0.5,checkTest=TRUE)
 	set1 <- sets$train
 	set2 <- sets$test
+	
+	#model1 <- sampleSets(dataset[set1,],target,0.7)
+	#modeltrain1 <- model1$train
+	#modeltest1 <- model1$test
 
 	# Build RF Model
 
-	result1 <- rfModel(dataset[set1,],target,input,partition,s[i])
-	errors1 <- c(errors1, result1$error)	
+	#result1 <- rfModel(dataset[set1,],target,input,modeltrain1,modeltest1,s[i])
+	#errors1 <- c(errors1, result1$error)	
 
 	# Apply RF Model on testing data to predict Z
 
-	Z2 <- as.numeric(predict(result1$model, dataset[,c(input,target)], type="response"))
+	#Z2 <- as.numeric(predict(result1$model, dataset[,c(input,target)], type="response"))
 	
 	# Create new dataset with test data and predicted Z
 
-	dataset <- cbind(dataset, Z2)
+	#dataset <- cbind(dataset, Z2)
 	
+	model2 <- sampleSets(dataset,target2,0.7)
+	modeltrain2 <- model2$train
+	modeltest2 <- model2$test
+	
+	print(rfcv(dataset[modeltrain2,input],dataset[modeltrain2,target2],step=1.5)$error.cv)
+
 	# Build and Apply RF Model on new dataset to predict ggg	
-	result2 <- rfModel(dataset[set2,],target2,input2,partition,s[i])
+	result2 <- rfModel(dataset,target2,input,modeltrain2,modeltest2,s[i])
 	errors2 <- c(errors2, result2$error)
 
 }

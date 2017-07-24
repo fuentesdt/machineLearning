@@ -1,5 +1,3 @@
-library(randomForest, quietly=TRUE)
-
 # Creates RF model of data and runs prediction on test set
 # PARAMETERS:
 # 	data = data matrix of all data
@@ -23,7 +21,7 @@ rfModel <- function(data,target,input,train,test,seed=42,quietly=FALSE,trees=500
 
 	# Build random forest
 	rf <- randomForest::randomForest(data[train,target]~.,
-		data=data[train,c(input,target)],
+		data=data[train,input],
 		ntree=trees,
 		mtrys=round(sqrt(ncol(data[,c(input,target)]))),
 		importance=TRUE,
@@ -35,7 +33,7 @@ rfModel <- function(data,target,input,train,test,seed=42,quietly=FALSE,trees=500
 	}
 
 	# Use RF model to predict test set and calculate error/matrix
-	prediction <- predict(rf, data[test,c(input,target)], type="response")
+	prediction <- predict(rf, data[test,input], type="response")
 	errorMatrix <- round(pcme(data[test,target], prediction), 2)
 	if(!quietly) {
 		print(errorMatrix)
