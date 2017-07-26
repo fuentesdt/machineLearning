@@ -26,7 +26,8 @@ rfModel <- function(data,target,input,train,test,seed=42,quietly=FALSE,trees=500
 		mtrys=round(sqrt(ncol(data[,c(input,target)]))),
 		importance=TRUE,
 		na.action=randomForest::na.roughfix,
-		replace=FALSE)
+		replace=FALSE,
+		keep.forest=TRUE)
 
 	if(!quietly) {
 #		print(rf)

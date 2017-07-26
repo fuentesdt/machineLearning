@@ -1,5 +1,5 @@
 library(randomForest, quietly=TRUE)
-library(irr, quietly=TRUE)
+library(leaps, quietly=TRUE)
 source("utils.R")
 
 # Load Data
@@ -29,7 +29,7 @@ target = "binaryTarget"
 # Rank input variables by highest correlation
 cors <- rankCor(dataset,initTarget,input)
 # Extract top X variables by correlation
-input <- input[cors[1:200]]
+input <- input[cors[1:100]]
 
 # Removes variables that are highly correlated to reduce redundancy in data
 # Set loop=TRUE to do this. Correlation threshhold > 0.8
@@ -52,11 +52,16 @@ while(loop) {
 }
 print(input)
 
+reg <- regsubsets(x=dataset[,input],y=dataset[,initTarget], really.big=T)
+summary(reg)
+
+break
+
 # Plot data matrix to see correlations between variables. Saves to pdf
 #plotData <- dataset[sample(seq_len(nrow(dataset)),50),c(initTarget,input[7:12])]
-plotData <- dataset[sample(seq_len(nrow(dataset)),50),c(initTarget,input[runif(6,1,length(input))])]
-pointColor <- ifelse(plotData[,initTarget] > 21, "red", "blue")
-pairs(plotData[,2:ncol(plotData)], col=pointColor)
+#plotData <- dataset[sample(seq_len(nrow(dataset)),50),c(initTarget,input[runif(6,1,length(input))])]
+#pointColor <- ifelse(plotData[,initTarget] > 21, "red", "blue")
+#pairs(plotData[,2:ncol(plotData)], col=pointColor)
 
 # Create vector for errors and random seeds
 print("Building rf model(s)")
