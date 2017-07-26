@@ -7,7 +7,8 @@
 #	(3) call the function
 #		ex) drawTrees(randomForestModel) 
 #
-# Uses the reprtree package
+# Uses the reprtree package by araastat
+#   https://github.com/araastat/reprtree
 # Checks if required packages are installed and installs missing packages
 # 
 # If installing reprtree fails, it may be because OpenSSL is not installed
