@@ -19,8 +19,9 @@ binNumTarget <- "xgbTTP"
 xgbTTP <- ifelse(dataset[,binTarget]==1,0,1)
 dataset <- cbind(xgbTTP,dataset)
 
-# Set variable columns and convert to strings to numeric 
-# (b/c XGB can only use numeric)
+# Set variable columns and convert strings to numeric 
+# (b/c XGB can only use numeric). I.e. xgboost can't use factors so convert
+# string factors to numeric
 varMain <- c("liver_BCLC", "liver_CLIP", "liver_Okuda", "liver_TNM")
 for(i in 1:length(varMain)) {
 	dataset[,varMain[i]] <- as.numeric(factor(dataset[,varMain[i]],
@@ -41,31 +42,46 @@ for(i in 1:length(imgDataIndex)) {
 	}
 }
 
-# stepwise regression subset selection
+## STEPWISE Selection ##
+# Pre process data using knnimpute from caret package
 dataPreProcess <-preProcess(dataset[-17,c(ttpTarget,imgData)], 
 	method = c("knnImpute"))
+# Impute data using preProcess to get new dataProcess containing no missing vals
 dataProcess <- predict(dataPreProcess, dataset[-17,c(ttpTarget,imgData)])
+# Get correlation coefs of dataset
 temp <- cor(dataProcess)
+# Find variables with corr coef > 0.9
 highCor <- findCorrelation(temp, cutoff = 0.9)
+# Remove highCor vars from imgData vector
 imgData <- setdiff(imgData, colnames(dataProcess)[highCor])
+# Remove highCor vars from dataset and create new dataset 
 dataProcess2 <- dataProcess[,-highCor]
+# build linear model of dataset
 lm <- lm(dataProcess2[,ttpTarget]~.,data=dataProcess2[,imgData], 
 	singular.ok=TRUE)
+# Perform forward stepwise regression on linear model 
 stpReg <- stepAIC(lm,direction="forward",trace=FALSE)
+# Get best subset from regression output
 coefs <- summary(stpReg)$coefficients[,4]
+# Add best subset to stepwise object in varImg
 varImg[[2]] <- names(coefs)[which(coefs < 0.15)]
 
-# exhaustive regression selection
+## EXHAUSTIVE Selection ##
+# run regsubsets to get best subset of 8 vars (Only 8 b/c it takes forever)
 reg <- regsubsets(x=dataProcess[,imgData],y=dataProcess[,ttpTarget],
 	really.big=T,nvmax=8)
+# Get names of vars in best subset
 fits <- coef(reg,8)
+# Add best subset to exhaustive object in varImg
 varImg[[3]] <- names(fits)[-1]
 print(varImg[[3]])
 
 # Create data frame to store predictions
 pred <- data.frame(obs = seq(1,nrow(dataset),1))
 
+# Loop for each of 4 baseline vars
 for(i in 1:length(varMain)) {
+	# Loop for each set of imgData
 	for(j in 3:length(varImg)) {
 		# Only build models if list of img data !null
 		if(!(is.null(varImg[[j]]))) {
@@ -123,6 +139,7 @@ for(i in 1:length(varMain)) {
 	}
 }
 
+# Save predictins to file
 pred <- pred[,2:ncol(pred)]
 write.csv(pred, file="modelPredictions.csv")
 cat("\nResults saved in modelPredictions.csv\n\n")
