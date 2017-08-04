@@ -67,6 +67,10 @@ s <- round(10000*runif(iterations))
 # Init empty vectors to save error pf each RF
 errors1 <- vector()
 errors2 <- vector()
+data <- data[which(as.numeric(data[,target2])<3),]
+data$ggg <- factor(as.numeric(data$ggg))
+str(data)
+break
 for(i in 1:iterations) {
 
 	cat("\nRUN :", i, "\n")
@@ -113,8 +117,14 @@ for(i in 1:iterations) {
 
 	} else {
 		sets <- sampleSets(dataset,target2,0.7)
-		rfm <- rfModel(dataset,target2,input,sets$train,sets$test,s[i])
-		errors1 <- c(errors1, rfm$error)
+		#rfm <- rfModel(dataset,target2,input,sets$train,sets$test,s[i])
+		#errors1 <- c(errors1, rfm$error)
+		svm <- svm(x=as.matrix(dataset[sets$train,input]),
+			y=dataset[sets$train,target2],
+			kernal="polynomial", degree=3)
+		pred <- predict(svm,dataset[sets$test,input])
+		errors1 <- c(errors1, (length(pred)-length(which(
+			dataset[sets$test,target2]==pred)))/length(pred))
 	}
 }
 

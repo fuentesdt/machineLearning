@@ -82,7 +82,7 @@ pred <- data.frame(obs = seq(1,nrow(dataset),1))
 # Loop for each of 4 baseline vars
 for(i in 1:length(varMain)) {
 	# Loop for each set of imgData
-	for(j in 3:length(varImg)) {
+	for(j in 1:length(varImg)) {
 		# Only build models if list of img data !null
 		if(!(is.null(varImg[[j]]))) {
 		cat("Building models with ", varMain[i], 
@@ -118,7 +118,9 @@ for(i in 1:length(varMain)) {
 
 			## SVM ##
 			svm <- svm(x=as.matrix(dataset[train,input]),
-					y=dataset[train,binTarget])
+					y=dataset[train,binTarget],
+					kernel="polynomial",
+					degree=3)
 			if(!(any(which(is.na(dataset[k,input]))))) {
 				pred[k,svmName] <- predict(svm, 
 					dataset[k,input])
