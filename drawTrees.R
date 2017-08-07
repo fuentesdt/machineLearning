@@ -23,7 +23,8 @@
 #	filename : name of pdf file containing tree diagrams
 #		   default = "TreeDiagrams.pdf"
 # OUTPUT:
-#	PDF file containing 
+#	PDF file containing
+ 
 args <- commandArgs( trailingOnly = TRUE )
 if( length( args ) < 2 )
   {
@@ -32,7 +33,6 @@ if( length( args ) < 2 )
   }
 inputModel <- args[1]
 outputFile <- args[2]
-
 
 drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	# Check if reprtree packages installed. If not, install reprtree
@@ -72,7 +72,8 @@ drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	cat("Printed diagrams for", model$ntree, "tree(s) to \"", 
 	filename, "\"\n")
 }
-load( inputModel )
+
+load( inputModel, verbose=TRUE )
 cat("loaded ", inputModel, "\n")
-#print( modelForest)
-drawTrees( modelForest, outputFile )
+#print(str(modelForest))
+drawTrees( modelForest , outputFile )
