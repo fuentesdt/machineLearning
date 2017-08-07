@@ -1,3 +1,5 @@
+#  Usage:
+#   > source('drawTrees.R')
 # Draws trees from random forest model
 #
 # To use this function:
@@ -22,6 +24,15 @@
 #		   default = "TreeDiagrams.pdf"
 # OUTPUT:
 #	PDF file containing 
+args <- commandArgs( trailingOnly = TRUE )
+if( length( args ) < 2 )
+  {
+  cat( "Usage: Rscript drawTrees.R inputModel outputFile ", sep = "" )
+  stopQuietly()
+  }
+inputModel <- args[1]
+outputFile <- args[2]
+
 
 drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	# Check if reprtree packages installed. If not, install reprtree
@@ -61,3 +72,7 @@ drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	cat("Printed diagrams for", model$ntree, "tree(s) to \"", 
 	filename, "\"\n")
 }
+load( inputModel )
+cat("loaded ", inputModel, "\n")
+#print( modelForest)
+drawTrees( modelForest, outputFile )
