@@ -73,7 +73,7 @@ drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	filename, "\"\n")
 }
 
-load( inputModel, verbose=TRUE )
+load( inputModel )
 cat("loaded ", inputModel, "\n")
 #print(str(modelForest))
 drawTrees( modelForest , outputFile )
