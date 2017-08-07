@@ -9,8 +9,8 @@ models <- read.csv("file:///home/gpauloski/git-repos/TACE/modelPredictions.csv")
 #dataset[,"liver_Okuda"] <- as.numeric(factor(dataset[,"liver_Okuda"], levels=levels(factor(dataset[,"liver_Okuda"]))))
 
 cindex <- function(time, pred) {
-	pairs <- combn(100,2)
 	nobs <- length(time)
+	pairs <- combn(nobs,2)
 	conc <- 0
 	tie <- 0	
 	
