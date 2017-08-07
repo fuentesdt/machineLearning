@@ -9,26 +9,26 @@ models <- read.csv("file:///home/gpauloski/git-repos/TACE/modelPredictions.csv")
 #dataset[,"liver_Okuda"] <- as.numeric(factor(dataset[,"liver_Okuda"], levels=levels(factor(dataset[,"liver_Okuda"]))))
 
 cindex <- function(time, pred) {
+	pairs <- combn(100,2)
 	nobs <- length(time)
 	conc <- 0
-	tie <- 0
-	npairs <- 0	
+	tie <- 0	
 	
-	for(i in 1:nobs) {
-		for(j in 1:nobs) {
-			if(i==j) break
-			npairs = npairs + 1	
-			if(time[i] > time[j]) {
-				if(pred[i] == pred[j]) tie = tie + 1
-				if(pred[i] > pred[j]) conc = conc + 1
-			} else if(time[i] < time[j]) {
-				if(pred[i] == pred[j]) tie = tie + 1
-				if(pred[i] < pred[j]) conc = conc + 1
-			} else tie = tie + 1
-		}
+	for(i in 1:ncol(pairs)) {	
+		if(time[pairs[1,i]] > time[pairs[2,i]]) {
+			if(pred[pairs[1,i]] == pred[pairs[2,i]]) 
+				tie = tie + 1
+			if(pred[pairs[1,i]] > pred[pairs[2,i]]) 
+				conc = conc + 1
+		} else if(time[pairs[1,i]] < time[pairs[2,i]]) {
+			if(pred[pairs[1,i]] == pred[pairs[2,i]]) 
+				tie = tie + 1
+			if(pred[pairs[1,i]] < pred[pairs[2,i]]) 
+				conc = conc + 1
+		} else tie = tie + 1
 	}
 
-	return((conc+(0.5*tie))/npairs)
+	return((conc+(0.5*tie))/ncol(pairs))
 } 
 
 #cat("\nBCLC:", cindex(dataset[,"liver_TTP"],dataset[,"liver_BCLC"]))
