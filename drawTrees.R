@@ -58,5 +58,6 @@ drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	# For each tree in model, draw tree diagram and print to pdf file
 	for(i in 1:model$ntree) reprtree:::plot.getTree(model,k=i)
 
-	cat("Printed diagrams for", model$ntree, "tree(s) to \"", filename, "\"\n")
+	cat("Printed diagrams for", model$ntree, "tree(s) to \"", 
+	filename, "\"\n")
 }
