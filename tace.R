@@ -1,7 +1,7 @@
 library(randomForest, quietly=TRUE)
 library(leaps, quietly=TRUE)
 source("utils.R")
-source("drawTrees.R")
+#source("drawTrees.R")
 
 # Load Data
 
@@ -10,7 +10,7 @@ dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/TACE%20data%20feature
 initTarget <- "liver_TTP"	# Target variable; will be refactored into binary categories
 split <- 21			# Target data greater than this variable will be 1; else 0
 partition <- 0.7 		# % of data in training set
-iterations <- 10		# Number of rf iterations
+iterations <- 1		# Number of rf iterations
 
 # Create list of input variables
 print("Creating input variable list")
@@ -95,10 +95,11 @@ for(i in 1:iterations) {
 	# Build RF model and save error result
 	rfm<- rfModel(dataset,target,input,sets$train,sets$test,seed=s[i])
 	errors <- c(errors, rfm$error)
+	print(str(rfm$model))
 }
 
 print(input)
-drawTrees(rfm$model, filename="LiverTreeDiagrams_regSel.pdf")
+#drawTrees(rfm$model, filename="LiverTreeDiagrams_regSel.pdf")
 summary(errors)
 cat("\nSTD DEV of errors =", sd(errors),"\n")
 

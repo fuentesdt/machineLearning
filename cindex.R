@@ -43,13 +43,13 @@ cindex <- function(time, pred) {
 
 output <- data.frame(model=as.character(seq(1,ncol(models[,-1]),1)))
 output <- cbind(output, c_index=seq(1,ncol(models[,-1]),1))
-output <- cbind(output, c_index2 = output$c_index)
+#output <- cbind(output, c_index2 = output$c_index)
 for(i in 1:ncol(models[,-1])) {
 	obs <- sort(c(which(models[,i+1]==1),which(models[,i+1]==2)))
-	output$c_index[i] <- estC(dataset[obs,"liver_TTP"], 
-		dataset[obs,"liver_CensorStatus"],models[obs,i+1])
+	#output$c_index[i] <- estC(dataset[obs,"liver_TTP"], 
+	#	dataset[obs,"liver_CensorStatus"],models[obs,i+1])
 	output$model[i] <- colnames(models)[i+1]
-	output$c_index2[i] <- cindex(dataset[obs,"liver_TTP"],models[obs,i+1])
+	output$c_index[i] <- cindex(dataset[obs,"liver_TTP"],models[obs,i+1])
 }
 
 output$model <- colnames(models)[2:ncol(models)]
