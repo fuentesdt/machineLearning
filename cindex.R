@@ -8,6 +8,16 @@ models <- read.csv("file:///home/gpauloski/git-repos/TACE/modelPredictions.csv")
 #dataset[,"liver_TNM"] <- as.numeric(factor(dataset[,"liver_TNM"], levels=levels(factor(dataset[,"liver_TNM"]))))
 #dataset[,"liver_Okuda"] <- as.numeric(factor(dataset[,"liver_Okuda"], levels=levels(factor(dataset[,"liver_Okuda"]))))
 
+#dataset[,"liver_BCLC"] <- -1*dataset[,"liver_BCLC"]
+#dataset[,"liver_CLIP"] <- -1*dataset[,"liver_CLIP"]
+#dataset[,"liver_TNM"] <- -1*dataset[,"liver_TNM"]
+#dataset[,"liver_Okuda"] <- -1*dataset[,"liver_Okuda"]
+
+#dataset[,"liver_BCLC"] <- ifelse(dataset[,"liver_BCLC"] < 4, 2, 1)
+#dataset[,"liver_CLIP"] <- ifelse(dataset[,"liver_CLIP"] < 3, 2, 1)
+#dataset[,"liver_TNM"] <- ifelse(dataset[,"liver_TNM"] < 3, 2, 1)
+#dataset[,"liver_Okuda"] <- ifelse(dataset[,"liver_Okuda"] < 2, 2, 1)
+
 cindex <- function(time, pred) {
 	nobs <- length(time)
 	pairs <- combn(nobs,2)

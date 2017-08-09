@@ -6,7 +6,9 @@ source("drawTrees.R")
 source("utils.R")
 
 # Load data
-data <- read.csv("file:///home/gpauloski/git-repos/ProstateChallenge/truthadcdatamatrix.csv", na.strings=c(".", "NA", "", "?"))
+data <- read.csv(paste("file:///home/gpauloski/git-repos/",
+	"ProstateChallenge/truthadcdatamatrix.csv", sep=""), 
+	na.strings=c(".", "NA", "", "?"))
 
 # Model Parameters
 partition <- 0.5	# % of data to be used in test set
@@ -27,34 +29,29 @@ target <- "Z"
 input2 <- c(input, "Z2")
 target2 <- "ggg"
 
-# Transform Data
-#for (i in 1:1) {
-#	data[,input[i]] <- log(data[,input[i]])
-#}
-
 # Create plots of correlation between variables in matrix
-# Sample 30 observations for plots
-
-#plotData <- data[sort(c(which(data[,target2]==2),which(data[,target2]==3))),
-#	c(target2,input)]
-#plotData <- data[sample(seq_len(nrow(data)),),c(target2,input)]
-# Create vector of colors based on GGG value for plot
-#pointColor <- vector()
-#for(i in 1:nrow(plotData)) {
-#	if(plotData[i,target2]==1) {
-#		pointColor <- c(pointColor, "red")
-#	} else if(plotData[i,target2]==2) {
-#		pointColor <- c(pointColor, "green")
-#	} else if(plotData[i,target2]==3) {
-#		pointColor <- c(pointColor, "purple3")
-#	} else if(plotData[i,target2]==4) {
-#		pointColor <- c(pointColor, "blue")
-#	} else {
-#		pointColor <- c(pointColor, "black")
-#	} 
-#}
-# Create plot. Saves to pdf file
-#pairs(plotData[,2:ncol(plotData)],col=pointColor)
+if(FALSE) {
+	plotData <- data[sort(c(which(data[,target2]==2),
+		which(data[,target2]==3))),c(target2,input)]
+	plotData <- data[sample(seq_len(nrow(data)),),c(target2,input)]
+	# Create vector of colors based on GGG value for plot
+	pointColor <- vector()
+	for(i in 1:nrow(plotData)) {
+		if(plotData[i,target2]==1) {
+			pointColor <- c(pointColor, "red")
+		} else if(plotData[i,target2]==2) {
+			pointColor <- c(pointColor, "green")
+		} else if(plotData[i,target2]==3) {
+			pointColor <- c(pointColor, "purple3")
+		} else if(plotData[i,target2]==4) {
+			pointColor <- c(pointColor, "blue")
+		} else {
+			pointColor <- c(pointColor, "black")
+		} 
+	}
+	# Create plot. Saves to pdf file
+	pairs(plotData[,2:ncol(plotData)],col=pointColor)
+}
 
 # Create column in dataset of fuzzy cmeans cluster
 #fcm <- cmeans(data[,input],5)
@@ -123,7 +120,7 @@ for(i in 1:iterations) {
 		nn <- neuralnet(ggg ~ Volume+KTRANS.reslice+
 			T2Axial.norm+ADC.reslice+T2Sag.norm+T2Axial.Entropy_4+
 			T2Axial.HaralickCorrelation_4+BVAL.reslice, 
-			data=dataset,hidden=100,stepmax=100000,rep=10)
+			data=dataset,hidden=100,stepmax=1000000,rep=10)
 		for(i in 1:10) {	
 			nnpred <- compute(nn, dataset[,input], rep=i)
 			print(round(nnpred$net.result[,1]))
