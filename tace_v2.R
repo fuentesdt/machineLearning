@@ -95,14 +95,15 @@ if(exhaustive) {
 # Create data frame to store predictions for each model
 pred <- data.frame(obs = seq(1,nrow(dataset),1))
 
-library(tree,quietly=TRUE)
-library(maptree,quietly=TRUE)
-dTree <- tree(TTP1.NR.2.R~.,data=dataset[,c(binTarget,imgData)])
-pred <- predict(dTree, dataset[,imgData], type="class")
-pdf(width=11,height=8.5)
-draw.tree(dTree,cex=.5,nodeinfo=TRUE)
-treeError <- (length(which(dataset[,binTarget]!=pred))/length(pred))*100
-cat("\nSingle Decision tree error prediciting training set:", treeError, "\n")
+# Create single decision tree and print diagram
+#library(tree,quietly=TRUE)
+#library(maptree,quietly=TRUE)
+#dTree <- tree(TTP1.NR.2.R~.,data=dataset[,c(binTarget,imgData)])
+#pred <- predict(dTree, dataset[,imgData], type="class")
+#pdf(width=11,height=8.5)
+#draw.tree(dTree,cex=.5,nodeinfo=TRUE)
+#treeError <- (length(which(dataset[,binTarget]!=pred))/length(pred))*100
+#cat("\nSingle Decision tree error prediciting training set:", treeError, "\n")
 
 break
 # Loop for each of 4 baseline vars
