@@ -21,7 +21,11 @@ Builds each model using a combination of baseline variables and set of imaging d
   ### Important notes!
     varMain = string vector of the baseline variables
     varImg = list of 3 vectors, one for each of the image data sets (volume, stepwise, exhaustive). If one of these vectors is left NULL (ex: by leaving the exhaustive parameter as FALSE) then the script will ignore it when building the models. 
-    This script assumes that the image data variables start at the column "liver_Volume" and ends at the last column in the data frame. The script will then remove any columns in the imgData set that are empty leaving a vector called imgData containing the name of each column in the original data matrix with imaging data. This imgData set is then used in the stepwise and exhaustive subset selection.
+    This script assumes that the image data variables start at the column "liver_Volume" and ends at the last column in the data frame.
+      The script will then remove any columns in the imgData set that are empty leaving a vector called imgData containing the name of each column in the original data matrix with imaging data. 
+      This imgData set is then used in the stepwise and exhaustive subset selection.
+    To get c-indexes, run cinde.R as its own script. In the script is a line to import the modelPredictions.csv output by tace_v2.R.
+      cindex.R outputs its own csv containing cindex value for each model in modelPredictions.csv
 
   ### Program Structure
     import data
