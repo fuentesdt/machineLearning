@@ -5,6 +5,7 @@ library(leaps, quietly=TRUE)		# Reg subset selection
 library(MASS, quietly=TRUE)		# Stepwise reg subset selection
 library(caret, quietly=TRUE)		# Caret for findCorrelation
 source("utils.R")			# RankCor function used to rank vars
+source("plotTree.R")
 
 # Parameters/Load Data
 dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/gmmdatamatrix_July_28.csv")
@@ -95,17 +96,10 @@ if(exhaustive) {
 # Create data frame to store predictions for each model
 pred <- data.frame(obs = seq(1,nrow(dataset),1))
 
-# Create single decision tree and print diagram
-#library(tree,quietly=TRUE)
-#library(maptree,quietly=TRUE)
-#dTree <- tree(TTP1.NR.2.R~.,data=dataset[,c(binTarget,imgData)])
-#pred <- predict(dTree, dataset[,imgData], type="class")
-#pdf(width=11,height=8.5)
-#draw.tree(dTree,cex=.5,nodeinfo=TRUE)
-#treeError <- (length(which(dataset[,binTarget]!=pred))/length(pred))*100
-#cat("\nSingle Decision tree error prediciting training set:", treeError, "\n")
+# Create single decision tree and build scatterplot matrix of each node
+plotTree(dataset=dataset, target=binTarget, input=imgData, 
+    filename="liver_treeScatterMatrix")
 
-break
 # Loop for each of 4 baseline vars
 for(i in 1:length(varMain)) {
 
@@ -146,8 +140,11 @@ for(i in 1:length(varMain)) {
 			rf <- randomForest::randomForest(
 				dataset[train,binTarget]~.,
 				data=dataset[train,input],
-				ntrees=500,
-				mtrys=round(sqrt(ncol(dataset[,input]))),
+				ntrees=10000,
+				#mtrys=round(sqrt(ncol(dataset[,input]))),
+				mtry=length(input),
+				samplesize=length(train),
+				replace=FALSE,
 				na.action=randomForest::na.roughfix)
 			pred[k,rfName] <- predict(rf,dataset[k,input])
 

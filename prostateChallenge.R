@@ -2,8 +2,10 @@ library(randomForest, quietly=TRUE)
 library(e1071, quietly=TRUE)
 library(leaps, quietly=TRUE)
 library(neuralnet, quietly=TRUE)
+library(irr, quietly=TRUE)
 source("drawTrees.R")
 source("utils.R")
+source("plotTree.R")
 
 # Load data
 data <- read.csv(paste("file:///home/gpauloski/git-repos/",
@@ -14,7 +16,7 @@ data <- read.csv(paste("file:///home/gpauloski/git-repos/",
 partition <- 0.5	# % of data to be used in test set
 split <- 4		# if 4; Z = 1 for ggg = 1,2,3
 			# elseif 3; Z = 1 for ggg = 1,2
-iterations <- 1		# number of iterations
+iterations <- 500		# number of iterations
 
 # Create Z vector based on value of ggg
 Z <- as.factor(ifelse(data$ggg < split, 1, 2))
@@ -65,10 +67,17 @@ s <- round(10000*runif(iterations))
 # Init empty vectors to save error pf each RF
 errors1 <- vector()
 errors2 <- vector()
-#data <- data[sort(c(which(as.numeric(data[,target2])==2),
-#	which(as.numeric(data[,target2])==3))),]
-#data$ggg <- as.factor(as.numeric(data$ggg))
-data <- data[,c(target2,input)]
+
+input <- input[c(4,5,6)]
+
+data <- data[sort(c(which(as.numeric(data[,target2])==1),
+	which(as.numeric(data[,target2])==2))),]
+data$ggg <- factor(data$ggg)
+
+#plotTree(dataset=data,target=target2,input=input,
+#    filename="Prostate_treeScatterMatrix")
+
+#data$ggg <- droplevels(data$ggg)
 
 for(i in 1:iterations) {
 
@@ -116,26 +125,44 @@ for(i in 1:iterations) {
 
 	} else {
 		sets <- sampleSets(dataset,target2,0.7)
-		dataset$ggg <- as.numeric(dataset$ggg)
-		nn <- neuralnet(ggg ~ Volume+KTRANS.reslice+
-			T2Axial.norm+ADC.reslice+T2Sag.norm+T2Axial.Entropy_4+
-			T2Axial.HaralickCorrelation_4+BVAL.reslice, 
-			data=dataset,hidden=100,stepmax=1000000,rep=10)
-		for(i in 1:10) {	
-			nnpred <- compute(nn, dataset[,input], rep=i)
-			print(round(nnpred$net.result[,1]))
-			print(dataset$ggg)
-			print(length(which(dataset$ggg!=round(
-				nnpred$net.result[,1])))/length(dataset$ggg))
+
+		## Neural Net
+#		dataset$ggg <- as.numeric(dataset$ggg)
+#		nn <- neuralnet(ggg ~ Volume+KTRANS.reslice+
+#			T2Axial.norm+ADC.reslice+T2Sag.norm+T2Axial.Entropy_4+
+#			T2Axial.HaralickCorrelation_4+BVAL.reslice, 
+#			data=dataset,hidden=100,stepmax=1000000,rep=10)
+#		for(i in 1:10) {	
+#			nnpred <- compute(nn, dataset[,input], rep=i)
+#			print(round(nnpred$net.result[,1]))
+#			print(dataset$ggg)
+#			print(length(which(dataset$ggg!=round(
+#				nnpred$net.result[,1])))/length(dataset$ggg))
+#		}
+
+		## Random Forest
+		error3 <- NULL
+		for(k in 1:50) {
+		sets <- sampleSets(dataset,target2,(k+49)/100)
+		rfm <- rfModel(dataset,target2,input,sets$train,sets$test,s[i],trees=1000)
+		error3 <- c(error3, rfm$error)
 		}
-#		rfm <- rfModel(dataset,target2,input,sets$train,sets$test,s[i])
-#		errors1 <- c(errors1, rfm$error)
+		errors1 <- cbind(errors1, error3)
+		#drawTrees(rfm$model)
+		#errors2 <- c(errors2, (length(which(dataset[sets$train,target2]
+		#	!= predict(rfm$model, dataset[sets$train,input]))) / 
+		#	length(sets$train)) * 100)
+
+		## Support Vector Machine
 #		svm <- svm(x=as.matrix(dataset[sets$train,input]),
-#			y=dataset[sets$train,target23])
-#			#kernal="polynomial", degree=3)
+#			y=dataset[sets$train,target])
+			#kernal="polynomial", degree=3)
 #		pred <- predict(svm,dataset[sets$test,input])
 #		errors1 <- c(errors1, ((length(pred)-length(which(
-#			dataset[sets$test,target2]==pred)))/length(pred))*100)
+#			dataset[sets$test,target]==pred)))/length(pred))*100)
+
+		errors2 <- c(errors2,kappa2(cbind(dataset[sets$test,target2],
+			rfm$prediction),weight="squared")$value)
 	}
 }
 
@@ -144,3 +171,5 @@ summary(errors1)
 print(sd(errors1))
 summary(errors2)
 print(sd(errors2))
+err <- cbind(seq(50,99,1),rowMeans(errors1),apply(errors1,1,sd))
+write.csv(err, file="errorpercent.csv")
