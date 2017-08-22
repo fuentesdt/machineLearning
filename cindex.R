@@ -8,27 +8,37 @@ models <- read.csv("file:///home/gpauloski/git-repos/TACE/modelPredictions.csv")
 #dataset[,"liver_TNM"] <- as.numeric(factor(dataset[,"liver_TNM"], levels=levels(factor(dataset[,"liver_TNM"]))))
 #dataset[,"liver_Okuda"] <- as.numeric(factor(dataset[,"liver_Okuda"], levels=levels(factor(dataset[,"liver_Okuda"]))))
 
+#dataset[,"liver_BCLC"] <- -1*dataset[,"liver_BCLC"]
+#dataset[,"liver_CLIP"] <- -1*dataset[,"liver_CLIP"]
+#dataset[,"liver_TNM"] <- -1*dataset[,"liver_TNM"]
+#dataset[,"liver_Okuda"] <- -1*dataset[,"liver_Okuda"]
+
+#dataset[,"liver_BCLC"] <- ifelse(dataset[,"liver_BCLC"] < 4, 2, 1)
+#dataset[,"liver_CLIP"] <- ifelse(dataset[,"liver_CLIP"] < 3, 2, 1)
+#dataset[,"liver_TNM"] <- ifelse(dataset[,"liver_TNM"] < 3, 2, 1)
+#dataset[,"liver_Okuda"] <- ifelse(dataset[,"liver_Okuda"] < 2, 2, 1)
+
 cindex <- function(time, pred) {
 	nobs <- length(time)
+	pairs <- combn(nobs,2)
 	conc <- 0
-	tie <- 0
-	npairs <- 0	
+	tie <- 0	
 	
-	for(i in 1:nobs) {
-		for(j in 1:nobs) {
-			if(i==j) break
-			npairs = npairs + 1	
-			if(time[i] > time[j]) {
-				if(pred[i] == pred[j]) tie = tie + 1
-				if(pred[i] > pred[j]) conc = conc + 1
-			} else if(time[i] < time[j]) {
-				if(pred[i] == pred[j]) tie = tie + 1
-				if(pred[i] < pred[j]) conc = conc + 1
-			} else tie = tie + 1
-		}
+	for(i in 1:ncol(pairs)) {	
+		if(time[pairs[1,i]] > time[pairs[2,i]]) {
+			if(pred[pairs[1,i]] == pred[pairs[2,i]]) 
+				tie = tie + 1
+			if(pred[pairs[1,i]] > pred[pairs[2,i]]) 
+				conc = conc + 1
+		} else if(time[pairs[1,i]] < time[pairs[2,i]]) {
+			if(pred[pairs[1,i]] == pred[pairs[2,i]]) 
+				tie = tie + 1
+			if(pred[pairs[1,i]] < pred[pairs[2,i]]) 
+				conc = conc + 1
+		} else tie = tie + 1
 	}
 
-	return((conc+(0.5*tie))/npairs)
+	return((conc+(0.5*tie))/ncol(pairs))
 } 
 
 #cat("\nBCLC:", cindex(dataset[,"liver_TTP"],dataset[,"liver_BCLC"]))
@@ -43,13 +53,13 @@ cindex <- function(time, pred) {
 
 output <- data.frame(model=as.character(seq(1,ncol(models[,-1]),1)))
 output <- cbind(output, c_index=seq(1,ncol(models[,-1]),1))
-output <- cbind(output, c_index2 = output$c_index)
+#output <- cbind(output, c_index2 = output$c_index)
 for(i in 1:ncol(models[,-1])) {
 	obs <- sort(c(which(models[,i+1]==1),which(models[,i+1]==2)))
-	output$c_index[i] <- estC(dataset[obs,"liver_TTP"], 
-		dataset[obs,"liver_CensorStatus"],models[obs,i+1])
+	#output$c_index[i] <- estC(dataset[obs,"liver_TTP"], 
+	#	dataset[obs,"liver_CensorStatus"],models[obs,i+1])
 	output$model[i] <- colnames(models)[i+1]
-	output$c_index2[i] <- cindex(dataset[obs,"liver_TTP"],models[obs,i+1])
+	output$c_index[i] <- cindex(dataset[obs,"liver_TTP"],models[obs,i+1])
 }
 
 output$model <- colnames(models)[2:ncol(models)]

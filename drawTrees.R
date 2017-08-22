@@ -1,5 +1,6 @@
 #  Usage:
 #   > source('drawTrees.R')
+#
 # Draws trees from random forest model
 #
 # To use this function:
@@ -14,7 +15,7 @@
 # Checks if required packages are installed and installs missing packages
 # 
 # If installing reprtree fails, it may be because OpenSSL is not installed
-# 'devtools' requires the git2r package which can only be installed using OpenSSL
+# 'devtools' requires the git2r package which is only installed using OpenSSL
 # See error messages in console for more information
 #
 # INPUT:
@@ -23,16 +24,16 @@
 #	filename : name of pdf file containing tree diagrams
 #		   default = "TreeDiagrams.pdf"
 # OUTPUT:
-#	PDF file containing 
-args <- commandArgs( trailingOnly = TRUE )
-if( length( args ) < 2 )
-  {
-  cat( "Usage: Rscript drawTrees.R inputModel outputFile ", sep = "" )
-  stopQuietly()
-  }
-inputModel <- args[1]
-outputFile <- args[2]
+#	PDF file containing tree diagrams
 
+#args <- commandArgs( trailingOnly = TRUE )
+#if( length( args ) < 2 )
+#  {
+#  cat( "Usage: Rscript drawTrees.R inputModel outputFile ", sep = "" )
+#  stopQuietly()
+#  }
+#inputModel <- args[1]
+#outputFile <- args[2]
 
 drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	# Check if reprtree packages installed. If not, install reprtree
@@ -69,9 +70,11 @@ drawTrees <- function(model, filename="TreeDiagrams.pdf") {
 	# For each tree in model, draw tree diagram and print to pdf file
 	for(i in 1:model$ntree) reprtree:::plot.getTree(model,k=i)
 
-	cat("Printed diagrams for", model$ntree, "tree(s) to \"", filename, "\"\n")
+	cat("Printed diagrams for", model$ntree, "tree(s) to \"", 
+	filename, "\"\n")
 }
-load( inputModel )
-cat("loaded ", inputModel, "\n")
-#print( modelForest)
-drawTrees( modelForest, outputFile )
+
+#load( inputModel )
+#cat("loaded ", inputModel, "\n")
+#print(str(modelForest))
+#drawTrees( modelForest , outputFile )

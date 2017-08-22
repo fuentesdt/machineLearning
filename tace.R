@@ -1,7 +1,7 @@
 library(randomForest, quietly=TRUE)
 library(leaps, quietly=TRUE)
 source("utils.R")
-source("drawTrees.R")
+#source("drawTrees.R")
 
 # Load Data
 
@@ -10,7 +10,7 @@ dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/TACE%20data%20feature
 initTarget <- "liver_TTP"	# Target variable; will be refactored into binary categories
 split <- 21			# Target data greater than this variable will be 1; else 0
 partition <- 0.7 		# % of data in training set
-iterations <- 1000		# Number of rf iterations
+iterations <- 1		# Number of rf iterations
 
 # Create list of input variables
 print("Creating input variable list")
@@ -61,12 +61,12 @@ while(loop) {
 #		"viable_Ven_SIGMA_RADIUS_5", "viable_Del_SIGMA_RADIUS_5", 
 #		"liver_Ven_ATROPOS_GMM_POSTERIORS1")
 
-pdf(height=12,width=12)
-reg <- regsubsets(x=dataset[,input],y=dataset[,initTarget], really.big=T)
-plot(reg, scale="Cp", main="Cp")
-fits <- coef(reg, 20)
-input <- names(fits)[2:21]
-print(input)
+#pdf(height=12,width=12)
+#reg <- regsubsets(x=dataset[,input],y=dataset[,initTarget], really.big=T)
+#plot(reg, scale="Cp", main="Cp")
+#fits <- coef(reg, 20)
+#input <- names(fits)[2:21]
+#print(input)
 
 # Plot data matrix to see correlations between variables. Saves to pdf
 #plotData <- dataset[sample(seq_len(nrow(dataset)),50),c(initTarget,input[7:12])]
@@ -95,10 +95,11 @@ for(i in 1:iterations) {
 	# Build RF model and save error result
 	rfm<- rfModel(dataset,target,input,sets$train,sets$test,seed=s[i])
 	errors <- c(errors, rfm$error)
+	print(str(rfm$model))
 }
 
 print(input)
-drawTrees(rfm$model, filename="LiverTreeDiagrams_regSel.pdf")
+#drawTrees(rfm$model, filename="LiverTreeDiagrams_regSel.pdf")
 summary(errors)
 cat("\nSTD DEV of errors =", sd(errors),"\n")
 

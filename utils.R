@@ -23,11 +23,12 @@ rfModel <- function(data,target,input,train,test,seed=42,quietly=FALSE,trees=500
 	rf <- randomForest::randomForest(data[train,target]~.,
 		data=data[train,input],
 		ntree=trees,
-		mtrys=round(sqrt(ncol(data[,c(input,target)]))),
 		importance=TRUE,
 		na.action=randomForest::na.roughfix,
 		replace=FALSE,
-		keep.forest=TRUE)
+		keep.forest=TRUE,
+		mtry=length(input),
+		samplesize=length(train))
 
 	if(!quietly) {
 #		print(rf)
