@@ -1,3 +1,5 @@
+# Usage: source("tace_v2.R")
+#     -or- 
 # Usage: Rscript tace_v2.R
 # 
 # dependencies:  
@@ -21,6 +23,7 @@ source("plotTree.R")
 dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/gmmdatamatrix_July_28.csv")
 stepwise <- TRUE	# If TRUE: perform stepwise model selection
 exhaustive <- FALSE	# If TRUE: perform exhaustive model selection
+plottreepdf<- FALSE	# If TRUE: perform output pdf of trees
 outputFile <- "model_predictions.csv"
 
 # Set target columns and convert binary target to factor
@@ -94,6 +97,9 @@ if(stepwise) {
 if(exhaustive) {
 	## EXHAUSTIVE Selection ##
 	# run regsubsets to get best subset of 8 vars (8 b/c it takes a while)
+        # 
+        # BUG ? - @gpauloski is this imgData variable overwritten above ?
+        # 
 	reg <- regsubsets(x=dataProcess[,imgData],y=dataProcess[,ttpTarget],
 		really.big=T,nvmax=8)
 	# Get names of vars in best subset
@@ -107,8 +113,7 @@ if(exhaustive) {
 pred <- data.frame(obs = seq(1,nrow(dataset),1))
 
 # Create single decision tree and build scatterplot matrix of each node
-plotTree(dataset=dataset, target=binTarget, input=imgData, 
-    filename="liver_treeScatterMatrix")
+if(plottreepdf) { plotTree(dataset=dataset, target=binTarget, input=imgData, filename="liver_treeScatterMatrix.pdf") }
 
 # Loop for each of 4 baseline vars
 for(i in 1:length(varMain)) {
