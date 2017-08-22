@@ -1,3 +1,13 @@
+# Usage: Rscript tace_v2.R
+# 
+# dependencies:  
+#   install.packages("leaps",repos='http://cran.us.r-project.org')
+#   install.packages("caret",repos='http://cran.us.r-project.org')
+#   install.packages("GGally",repos='http://cran.us.r-project.org')
+#   install.packages("maptree",repos='http://cran.us.r-project.org')
+#   install.packages("RANN",repos='http://cran.us.r-project.org')
+#   install.packages("tree",repos='http://cran.us.r-project.org')
+# 
 library(randomForest, quietly=TRUE)	# RF
 library(e1071, quietly=TRUE)		# SVM
 library(xgboost, quietly=TRUE)		# XGboost
