@@ -112,6 +112,7 @@ crs$weights <- NULL
 # Require the survival package.
 
 library(survival, quietly=TRUE)
+# untar(download.packages(pkgs = "survival", destdir = "./survivalsrc", type = "source",repos='http://cran.us.r-project.org')[,2])
 
 # Build the Survival model.
 
@@ -160,4 +161,12 @@ sdata <- crs$dataset[crs$test,]
 write.csv(cbind(sdata, crs$pr), file="./test_score_all.csv", row.names=FALSE)
 
 
-# FIXME: @gpauloski add c-index calculations on test set
+# FIXME: @gpauloski how does this compare to your c-index calculations on test set
+
+#options(na.action=na.exclude)
+#fit <- coxph(Surv(time, status) ~ ph.ecog + age + sex, lung)
+#survConcordance(Surv(time, status) ~predict(fit), lung)
+
+options(na.action=na.exclude)
+testdata  = crs$dataset[crs$test, c(crs$input, crs$target, crs$risk)  ]
+survConcordance(Surv(liver_TTP, liver_CensorModality)  ~predict(crs$survival,testdata  ),testdata  )
