@@ -1,36 +1,29 @@
-library(randomForest, quietly=TRUE)  # RF
-library(e1071, quietly=TRUE)         # SVM
-library(xgboost, quietly=TRUE)       # XGboost
-library(leaps, quietly=TRUE)         # Reg subset selection
-library(MASS, quietly=TRUE)          # Stepwise reg subset selection
-library(caret, quietly=TRUE)         # Caret for findCorrelation
-library(cluster, quietly=TRUE)       # pam function for clustering data
-source("utils.R")                    # RankCor function used to rank vars
-source("plotTree.R")
+# Load dependencies
+libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", 
+    "caret", "cluster")
+invisible(suppressMessages(lapply(libs, library, quietly = TRUE, 
+    character.only = TRUE)))
 
 # Parameters/Load Data
-dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/gmmdatamatrixfixed22Aug2017_Greg_edited.csv")
-stepwise <- TRUE     # If TRUE: perform stepwise model selection
-exhaustive <- TRUE  # If TRUE: perform exhaustive model selection
-SSL <- TRUE          # Repeat each model with semi-supervised clusters added
-kClusters <- 10      # Number of clusters in SSL
-outputFile <- "model_predictions"  # file save predictions of each model
+dataset <- read.csv(paste0("C:/Users/Gregory/Documents/GitRepo/machineLearning/",
+    "testdata.csv"))
+volumes <- TRUE
+stepwise <- FALSE   
+exhaustive <- FALSE 
+anneal <- FALSE  
+genetic <- FALSE 
+boruta <- FALSE 
+semisupervised <- FALSE    # Perform semisupervised learning 
+kClusters <- 10           # Number of clusters in SSL
+outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
 ttpTarget <- "liver_TTP"
-targets <- c("targetSplit21", "targetSplit28", "targetRandom")
+targets <- c("split21", "split28", "random")
 dataset <- cbind(
-    targetSplit21 = as.factor(ifelse(dataset[,ttpTarget] < 21, 1, 2)), 
-    targetSplit28 = as.factor(ifelse(dataset[,ttpTarget] < 28, 1, 2)), 
-    targetRandom = as.factor(round(runif(nrow(dataset), 1, 2))), dataset)
-
-# Create new target for xgboost b/c it can only use binary num vector of
-# ones and zeros and add that to dataset
-xgbTargets <- c("xgbTarget1", "xgbTarget2", "xgbTarget2")
-dataset <- cbind(
-    xgbTarget1 = ifelse(dataset[,targets[1]] == 1, 0, 1),
-    xgbTarget2 = ifelse(dataset[,targets[2]] == 1, 0, 1),
-    xgbTarget3 = ifelse(dataset[,targets[3]] == 1, 0, 1),  dataset)
+    split21 = as.factor(ifelse(dataset[,ttpTarget] < 21, 1, 2)), 
+    split28 = as.factor(ifelse(dataset[,ttpTarget] < 28, 1, 2)), 
+    random = as.factor(round(runif(nrow(dataset), 1, 2))), dataset)
 
 # Set variable columns and convert strings to numeric 
 # (b/c XGB can only use numeric). I.e. xgboost can't use factors so convert
@@ -41,22 +34,25 @@ for(i in 1:length(varMain)) {
       levels=levels(factor(dataset[,varMain[i]]))))
 }
 
-# Set names of volume group
-varImg <- list("volumes" = NULL, "stepwise" = NULL, "exhaustive" = NULL)
-varImg$volumes <- c("liver_Volume", "necrosis_Volume", "viable_Volume", 
-    "viable_Art_DENOISE")
+# Create list of img data subsets
+varImg <- list("volumes" = NULL, "stepwise" = NULL, "exhaustive" = NULL,
+    "anneal" = NULL, "genetic" = NULL, "boruta" = NULL)
 
 # Filter only baseline obs
 dataset <- dataset[which(dataset[,"liver_TimeID"] == "baseline"),]
 
 # Get list of col names for image data and remove empty columns
 imgData <- NULL
-imgDataIndex <- seq(which(colnames(dataset)==varImg$volumes[1]),ncol(dataset),1)
-for(i in 1:length(imgDataIndex)) {
-  if(length(which(is.na(dataset[,imgDataIndex[i]]))) < 10) {
-    imgData <- c(imgData, colnames(dataset)[imgDataIndex[i]])
+imgDataInd <- seq(which(colnames(dataset) == "liver_Volume"), ncol(dataset),1)
+for(i in 1:length(imgDataInd)) {
+  if(length(which(is.na(dataset[,imgDataInd[i]]))) < 10) {
+    imgData <- c(imgData, colnames(dataset)[imgDataInd[i]])
   }
 }
+
+## Volume Selection ##
+if(volumes) varImg$volumes <- c("liver_Volume", "necrosis_Volume", 
+    "viable_Volume", "viable_Art_DENOISE")
 
 ## STEPWISE Selection ##
 # Stepwise AIC fails if num vars > num obs. If you get error that AIC is
@@ -98,16 +94,43 @@ if(exhaustive) {
   varImg[[3]] <- names(fits)[-1]
 }
 
-# Create data frame to store predictions for each model and errors
+## ANNEAL Selection ##
+if(anneal) {
+
+}
+
+## GENETIC Selection ##
+if(genetic) {
+
+}
+
+## BORUTA Selection ##
+if(boruta) {
+
+}
+
+# Returns vector of error matrix values and percent error
+# p = predicted value from model, a = actual value
+# only works on binary classifications 1 and 2
+errorMatrix <- function(p, a) {
+  return(c(length(which(p == 1 & a == 1)), length(which(p == 1 & a == 2)),
+      length(which(p == 2 & a == 1)), length(which(p == 2 & a == 2)),
+      length(which(p != a)) / length(p)))
+}
+
+# Variables to store results/errors of models
 pred <- data.frame(obs = seq(1,nrow(dataset),1))
 predErrors <- NULL
 predErrorNames = c("modelID", "p0a0", "p0a1", "p1a0", "p1a1", "errors")
 
+# Number of iterations. If semisupervised = false, iters = 1 and the script
+# will only perform supervised learning. If semisupervised = true, iters =
+# kClusters meaning run 1 will be supervised and the following runs will be 
+# semi-supervised with k = 2:kClusters
+iters <- ifelse(semisupervised, kClusters, 1)
+
 # Loop for each target variable
 for(h in 1:length(targets)) {
-  # Set current binary target as well as xgb target
-  binTarget = targets[h]
-  binNumTarget = xgbTargets[h]
 
   # Loop for each of 4 baseline vars
   for(i in 1:length(varMain)) {
@@ -117,170 +140,110 @@ for(h in 1:length(targets)) {
 
       # Only build models if list of img data !null
       if(!(is.null(varImg[[j]]))) {
-        cat("Building model: input = [", varMain[i], ", ",  names(varImg)[j], 
-            "], target = ", targets[h], "\n", sep="")
 
-        # Build input var list by combining baseline and imgData vars
-        input <- c(varMain[i], varImg[[j]])
+        # Loop for each in iters. See iters variable for more info
+        for(k in 1:iters) {
+          cat("Building Models: target=", targets[h], ", input=[", varMain[i],
+              ", ", names(varImg)[j], "]", sep="")
+          # Add new columns to pred data frame to store results
+          pred <- cbind(pred, a = vector(length=nrow(dataset)),
+              b = vector(length=nrow(dataset)), 
+              c = vector(length=nrow(dataset)))
+          # Create name of column using var inputs and ML algorithm
+          rfName <- paste0(targets[h], "_", varMain[i], "_", 
+              names(varImg)[j], "_", "rf")
+          svmName <- paste0(targets[h], "_", varMain[i], "_", 
+              names(varImg)[j], "_", "svm")
+          xgbName <- paste0(targets[h], "_", varMain[i], "_", 
+              names(varImg)[j], "_", "xgb")
+          # Copy dataset to new variable to prevent overwrite issues
+          ds <- dataset
 
-        # Add new columns to pred data frame to store results
-        pred <- cbind(pred, a = vector(length=nrow(dataset)),
-            b = vector(length=nrow(dataset)), c = vector(length=nrow(dataset)))
-        # Create name of column using var inputs and ML algorithm
-        rfName <- paste0(targets[h], "_", varMain[i], "_", names(varImg)[j], 
-            "_", "rf")
-        svmName <- paste0(targets[h], "_", varMain[i], "_", names(varImg)[j], 
-            "_", "svm")
-        xgbName <- paste0(targets[h], "_", varMain[i], "_", names(varImg)[j], 
-            "_", "xgb")
-        # Set colnames of data frame to these names
-        colnames(pred)[colnames(pred)=="a"] <- rfName
-        colnames(pred)[colnames(pred)=="b"] <- svmName
-        colnames(pred)[colnames(pred)=="c"] <- xgbName
-
-        # For each obs in dataset, leave one out and train model on
-        # remaining obs in dataset then use obs that was left out as test obs
-        for(k in 1:nrow(dataset)) {
-          # Create vector of training obs missing one variable
-          train <- seq(1,nrow(dataset),1)
-          train <- train[-k]
-
-          ## RANDOM FOREST ##
-          rf <- randomForest(dataset[train,binTarget]~.,
-              data=dataset[train,input], ntrees=10000, mtry=length(input),
-              replace=FALSE, na.action=na.roughfix)
-          pred[k,rfName] <- predict(rf, dataset[k, input])
-
-          ## SVM ##
-          svm <- svm(x=as.matrix(dataset[train,input]),
-              y=dataset[train,binTarget], kernel="polynomial", degree=3)
-          if(!(any(which(is.na(dataset[k,input]))))) {
-            pred[k,svmName] <- predict(svm, dataset[k,input])
-          } else pred[k,svmName] <- "NA"			
-
-          ## XGBOOST ##
-          trnList <- list("data" = as.matrix(dataset[train,input]), 
-              "label" = dataset[train,binNumTarget])
-          tstList <- list("data" = as.matrix(dataset[k,input]), 
-              "label" = dataset[k,binNumTarget])
-          bst <- xgboost(trnList$data, label=trnList$label, nrounds=2, 
-               objective="binary:logistic", verbose=0)
-          pred[k,xgbName] <- ifelse(round(predict(bst, 
-              tstList$data)) == 0, 1, 2)
-        }
-
-        # Calculate errors and error matrix
-        predErrors <- rbind(predErrors, c(rfName, as.character(c( 
-            length(which(pred[,rfName] == 1 & dataset[,binTarget] == 1)),
-            length(which(pred[,rfName] == 1 & dataset[,binTarget] == 2)),
-            length(which(pred[,rfName] == 2 & dataset[,binTarget] == 1)),
-            length(which(pred[,rfName] == 2 & dataset[,binTarget] == 2)),
-            length(which(pred[,rfName] != dataset[,binTarget])) / 
-            length(pred[,rfName])))))
-        predErrors <- rbind(predErrors, c(svmName, as.character(c(
-            length(which(pred[,svmName] == 1 & dataset[,binTarget] == 1)),
-            length(which(pred[,svmName] == 1 & dataset[,binTarget] == 2)),
-            length(which(pred[,svmName] == 2 & dataset[,binTarget] == 1)),
-            length(which(pred[,svmName] == 2 & dataset[,binTarget] == 2)),
-            length(which(pred[,svmName] != dataset[,binTarget])) / 
-            length(pred[,svmName]))))) 
-        predErrors <- rbind(predErrors, c(xgbName, as.character(c( 
-            length(which(pred[,xgbName] == 1 & dataset[,binTarget] == 1)),
-            length(which(pred[,xgbName] == 1 & dataset[,binTarget] == 2)),
-            length(which(pred[,xgbName] == 2 & dataset[,binTarget] == 1)),
-            length(which(pred[,xgbName] == 2 & dataset[,binTarget] == 2)),
-            length(which(pred[,xgbName] != dataset[,binTarget])) / 
-            length(pred[,xgbName])))))
-
-        # If SSL = TRUE
-        if(SSL) {
-
-          # Loop for number of clusters to try
-          for(m in 1:kClusters) {
-
-            # Add new columns to pred data frame to store results
-            pred <- cbind(pred, a = vector(length=nrow(dataset)),
-                b = vector(length=nrow(dataset)), 
-                c = vector(length=nrow(dataset)))
-            # Create name of column using var inputs and ML algorithm
-            rfSSLName <- paste0(rfName, "_SSL_k", m)
-            svmSSLName <- paste0(svmName, "_SSL_k", m)
-            xgbSSLName <- paste0(xgbName, "_SSL_k", m)
+          # If k = 1, perform supervised learning
+          if(k == 1) {
+            cat(", Supervised", "\n", sep="")
+            # Build input var list by combining baseline and imgData vars
+            input <- c(varMain[[i]], varImg[[j]])
             # Set colnames of data frame to these names
-            colnames(pred)[colnames(pred)=="a"] <- rfSSLName
-            colnames(pred)[colnames(pred)=="b"] <- svmSSLName
-            colnames(pred)[colnames(pred)=="c"] <- xgbSSLName
+            colnames(pred)[colnames(pred)=="a"] <- rfName
+            colnames(pred)[colnames(pred)=="b"] <- svmName
+            colnames(pred)[colnames(pred)=="c"] <- xgbName
 
-            rfUL <- randomForest(x=dataset[,input], ntree=1000, 
-                replace=FALSE, mtry=length(input), na.action=na.roughfix)
-            clusters <- pam(1-rfUL$proximity, k=m, diss=TRUE)
+          # Else k != 1, perfrom semi-supervised learning
+          } else {
+            cat(", Semi-supervised (k=", k, ")\n", sep="")
+            rfName <- paste0(rfName, "_k", k)
+            svmName <- paste0(svmName, "_k", k)
+            xgbName <- paste0(xgbName, "_k", k)
+            # Set colnames of data frame to these names
+            colnames(pred)[colnames(pred)=="a"] <- rfName
+            colnames(pred)[colnames(pred)=="b"] <- svmName
+            colnames(pred)[colnames(pred)=="c"] <- xgbName
+            # Unsupervised random forest and add classifications to dataset
+            rfUL <- randomForest(x=ds[,c(varMain[[i]], varImg[[j]])], 
+                ntree=1000, replace=FALSE, mtry=length(input), 
+                na.action=na.roughfix)
+            ds <- cbind(ds, clusters = pam(1-rfUL$proximity, k=k, diss=TRUE, 
+                cluster.only = TRUE))
+            # Build input var list by combining baseline and imgData vars
+            input <- c(varMain[[i]], varImg[[j]], "clusters")
+          }
 
-            # Create new data frame and input list with clusters added
-            ds <- cbind(dataset, clusters = clusters$clustering)
-            inputSSL <- c(input, "clusters")
+          # For each obs in dataset, leave one out and train model on
+          # remaining obs in dataset then use obs that was left out as test obs
+          for(m in 1:nrow(ds)) {
+            # Create vector of training obs missing one variable
+            train <- seq(1,nrow(ds),1)
+            train <- train[-m]
 
-            # Leave one out
-            for(k in 1:nrow(ds)) {
+            ## RANDOM FOREST ##
+            rf <- randomForest(ds[train,targets[h]]~.,
+                data=ds[train,input], ntrees=10000, mtry=length(input),
+                replace=FALSE, na.action=na.roughfix)
+            pred[m,rfName] <- predict(rf, ds[m, input])
 
-              ## RANDOM FOREST SSL
-              rf <- randomForest(ds[train, binTarget]~., 
-                   data=ds[train, inputSSL], ntrees=1000, replace=FALSE, 
-                   mtry=length(inputSSL))           
-              pred[k,rfSSLName] <- predict(rf, ds[k, inputSSL])
+            ## SVM ##
+            svm <- svm(x=as.matrix(ds[train,input]),
+                y=ds[train,targets[h]], kernel="polynomial", degree=3)
+            if(!(any(which(is.na(ds[m,input]))))) {
+              pred[m,svmName] <- predict(svm, ds[m,input])
+            } else pred[m,svmName] <- "NA"			
 
-              ## SVM ##
-              svm <- svm(x=as.matrix(ds[train,inputSSL]),
-                  y=ds[train,binTarget], kernal="linear")
-              if(!(any(which(is.na(ds[k,inputSSL]))))) {
-                pred[k,svmSSLName] <- predict(svm, ds[k,inputSSL])
-              } else pred[k,svmName] <- "NA"			
+            ## XGBOOST ##
+            trnList <- list("data" = as.matrix(ds[train,input]), 
+                "label" = ifelse(ds[train,targets[h]] == 1, 0, 1))
+            tstList <- list("data" = as.matrix(ds[m,input]), 
+                "label" = ifelse(ds[m,targets[h]] == 1, 0, 1))
+            bst <- xgboost(trnList$data, label=trnList$label, nrounds=2, 
+                 objective="binary:logistic", verbose=0)
+            pred[m,xgbName] <- ifelse(round(predict(bst, 
+                tstList$data)) == 0, 1, 2)
+          }
 
-              ## XGBOOST ##
-              trnList <- list("data" = as.matrix(ds[train,inputSSL]), 
-                  "label" = ds[train,binNumTarget])
-              tstList <- list("data" = as.matrix(ds[k,inputSSL]), 
-                  "label" = ds[k,binNumTarget])
-              bst <- xgboost(trnList$data, label=trnList$label, nrounds=2, 
-                  objective="binary:logistic", verbose=0)
-              pred[k,xgbSSLName] <- ifelse(round(predict(bst, 
-                  tstList$data)) == 0, 1, 2)
-            }
+          # Calculate errors and error matrix
+          predErrors <- rbind(predErrors, c(rfName, 
+              errorMatrix(pred[,rfName], ds[,targets[h]])))
+          predErrors <- rbind(predErrors, c(svmName, 
+              errorMatrix(pred[,svmName], ds[,targets[h]])))
+          predErrors <- rbind(predErrors, c(xgbName, 
+              errorMatrix(pred[,xgbName], ds[,targets[h]])))
 
-            # Calculate error and error matrix on SSL models        
-            predErrors <- rbind(predErrors, c(rfSSLName, as.character(c( 
-                length(which(pred[,rfSSLName] == 1 & dataset[,binTarget] == 1)),
-                length(which(pred[,rfSSLName] == 1 & dataset[,binTarget] == 2)),
-                length(which(pred[,rfSSLName] == 2 & dataset[,binTarget] == 1)),
-                length(which(pred[,rfSSLName] == 2 & dataset[,binTarget] == 2)),
-                length(which(pred[,rfSSLName] != dataset[,binTarget])) / 
-                length(pred[,rfSSLName])))))
-            predErrors <- rbind(predErrors, c(svmSSLName, as.character(c(
-                length(which(pred[,svmSSLName] == 1 & dataset[,binTarget] ==1)),
-                length(which(pred[,svmSSLName] == 1 & dataset[,binTarget] ==2)),
-                length(which(pred[,svmSSLName] == 2 & dataset[,binTarget] ==1)),
-                length(which(pred[,svmSSLName] == 2 & dataset[,binTarget] ==2)),
-                length(which(pred[,svmSSLName] != dataset[,binTarget])) / 
-                length(pred[,svmSSLName])))))
-            predErrors <- rbind(predErrors, c(xgbSSLName, as.character(c( 
-                length(which(pred[,xgbSSLName] == 1 & dataset[,binTarget] ==1)),
-                length(which(pred[,xgbSSLName] == 1 & dataset[,binTarget] ==2)),
-                length(which(pred[,xgbSSLName] == 2 & dataset[,binTarget] ==1)),
-                length(which(pred[,xgbSSLName] == 2 & dataset[,binTarget] ==2)),
-                length(which(pred[,xgbSSLName] != dataset[,binTarget])) / 
-                length(pred[,xgbSSLName])))))
-
-          } # end loop k clusters
-        } # end if ssl
+        } # end loop iters
       } # end if varImg = NULL
     } # end loop varImg
   } # end loop varMain
 } # end loop targets
 
-# Save predictions to file
-pred <- pred[,2:ncol(pred)]
+# Transpose pred matrix and remove index vector
+pred <- t(pred[,2:ncol(pred)])
+# Convert predErrors to data frame and give it column names
 predErrors <- data.frame(predErrors)
 colnames(predErrors) <- predErrorNames
-predErrors <- cbind(predErrors, rank = rank(predErrors$error))
-write.csv(pred, file=paste0(outputFile, ".csv"))
-write.csv(predErrors, file=paste0(outputFile, "_errors.csv"))
-cat("\nResults saved in", outputFile, "\n\n")
+# Combine predErrors and pred
+predErrors <- cbind(predErrors, rank = rank(predErrors$error), pred)
+# Clean up colnames and modelIDs
+for(i in 8:ncol(predErrors)) colnames(predErrors)[i] <- paste0("obs_", i-7) 
+predErrors[,1] <- gsub("_liver_", "_", predErrors[,1])
+# Write predErrors to csv
+write.csv(predErrors, file=  outputFile, row.names = FALSE)
+cat("\nResults saved in", outputFile, "\n")
