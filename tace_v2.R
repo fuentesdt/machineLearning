@@ -8,6 +8,8 @@ library(cluster, quietly=TRUE)       # pam function for clustering data
 source("utils.R")                    # RankCor function used to rank vars
 source("plotTree.R")
 
+TEST
+
 # Parameters/Load Data
 dataset <- read.csv("file:///home/gpauloski/git-repos/TACE/gmmdatamatrixfixed22Aug2017_Greg_edited.csv")
 stepwise <- TRUE     # If TRUE: perform stepwise model selection
