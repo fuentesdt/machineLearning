@@ -175,5 +175,5 @@ survConcordance(Surv(liver_TTP, liver_CensorModality)  ~predict(crs$survival,tes
 source("cindex.R")
 #   install.packages("compareC",repos='http://cran.us.r-project.org')
 # cindex(actual values, predicted values)
-c_ind <- cindex(crs$dataset[crs$test,crs$target], crs$pr)
+c_ind <- cindex(crs$dataset[crs$test,crs$target], predict(crs$survival, testdata))
 cat("C-index =", c_ind, "\n")
