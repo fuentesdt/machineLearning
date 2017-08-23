@@ -1,19 +1,19 @@
 # Load dependencies
-libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", 
-    "caret", "cluster")
+libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", "ranger", 
+    "caret", "cluster", "subselect", "Boruta")
 invisible(suppressMessages(lapply(libs, library, quietly = TRUE, 
     character.only = TRUE)))
 
 # Parameters/Load Data
-dataset <- read.csv(paste0("C:/Users/Gregory/Documents/GitRepo/machineLearning/",
-    "testdata.csv"))
+dataset <- read.csv(paste0("file:///home/gpauloski/git-repos/TACE/",
+    "gmmdatamatrixfixed22Aug2017_Greg_edited.csv"))
 volumes <- TRUE
-stepwise <- FALSE   
+stepwise <- TRUE   
 exhaustive <- FALSE 
-anneal <- FALSE  
-genetic <- FALSE 
-boruta <- FALSE 
-semisupervised <- FALSE    # Perform semisupervised learning 
+anneal <- TRUE 
+genetic <- TRUE 
+boruta <- TRUE 
+semisupervised <- TRUE    # Perform semisupervised learning 
 kClusters <- 10           # Number of clusters in SSL
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
@@ -26,13 +26,13 @@ dataset <- cbind(
     random = as.factor(round(runif(nrow(dataset), 1, 2))), dataset)
 
 # Set variable columns and convert strings to numeric 
-# (b/c XGB can only use numeric). I.e. xgboost can't use factors so convert
-# string factors to numeric
-varMain <- c("liver_BCLC", "liver_CLIP", "liver_Okuda", "liver_TNM")
-for(i in 1:length(varMain)) {
+varMain <- c("liver_BCLC", "liver_CLIP", "liver_Okuda", "liver_TNM", "mNull")
+for(i in 1:(length(varMain)-1)) {
   dataset[,varMain[i]] <- as.numeric(factor(dataset[,varMain[i]],
       levels=levels(factor(dataset[,varMain[i]]))))
 }
+# Create null model based on BCLC
+dataset <- cbind(mNull = lm(liver_TTP ~ liver_BCLC, data=dataset)$fitted.values,    dataset)
 
 # Create list of img data subsets
 varImg <- list("volumes" = NULL, "stepwise" = NULL, "exhaustive" = NULL,
@@ -50,30 +50,32 @@ for(i in 1:length(imgDataInd)) {
   }
 }
 
+# Create img data list with high corr vars removed. To be used in subsets
+# Pre process data using knnimpute from caret package
+dataPreProcess <-preProcess(dataset[,c(ttpTarget,imgData)], 
+    method = c("knnImpute"))
+# Impute data using preProcess to get new dataProcess w/ no missing vals
+dataProcess <- predict(dataPreProcess,dataset[,c(ttpTarget,imgData)])
+# Find variables with corr coef > 0.8
+highCor <- findCorrelation(cor(dataProcess), cutoff = 0.8)
+# Make new image data vector with high corr variables removed from imgData
+imgDataClean <- setdiff(imgData, colnames(dataProcess)[highCor])
+dataProcess <- dataProcess[,-highCor]
+
 ## Volume Selection ##
-if(volumes) varImg$volumes <- c("liver_Volume", "necrosis_Volume", 
-    "viable_Volume", "viable_Art_DENOISE")
+if(volumes) {
+  varImg$volumes <- c("liver_Volume", "necrosis_Volume", "viable_Volume", 
+      "viable_Art_DENOISE")
+  print("Volume subset selection finished")
+}
 
 ## STEPWISE Selection ##
 # Stepwise AIC fails if num vars > num obs. If you get error that AIC is
 # infinity, decrease the correlation coefficient cutoff. This will increase
 # the number of corr vars removed from the stepwise regression
 if(stepwise) {
-  # Pre process data using knnimpute from caret package
-  dataPreProcess <-preProcess(dataset[,c(ttpTarget,imgData)], 
-      method = c("knnImpute"))
-  # Impute data using preProcess to get new dataProcess w/ no missing vals
-  dataProcess <- predict(dataPreProcess,dataset[,c(ttpTarget,imgData)])
-  # Get correlation coefs of dataset
-  temp <- cor(dataProcess)
-  # Find variables with corr coef > 0.8
-  highCor <- findCorrelation(temp, cutoff = 0.8)
-  # Make new image data vector with high corr variables removed from imgData
-  imgDataStepwise <- setdiff(imgData, colnames(dataProcess)[highCor])
-  # Remove highCor vars from dataset and create new dataset 
-  dataProcess2 <- dataProcess[,-highCor]
   # build linear model of dataset
-  lm <- lm(dataProcess2[,ttpTarget]~.,data=dataProcess2[,imgDataStepwise], 
+  lm <- lm(dataProcess[,ttpTarget]~.,data=dataProcess[,imgDataClean], 
       singular.ok=TRUE)
   # Perform forward stepwise regression on linear model 
   stpReg <- stepAIC(lm,direction="both",trace=FALSE)
@@ -81,6 +83,7 @@ if(stepwise) {
   coefs <- summary(stpReg)$coefficients[,4]  
   # Add best subset to stepwise object in varImg
   varImg[[2]] <- names(coefs)[which(coefs < 0.15)]
+  print("Stepwise subset selection finished")
 }
 
 ## EXHAUSTIVE Selection ##
@@ -92,21 +95,31 @@ if(exhaustive) {
   fits <- coef(reg,8)
   # Add best subset to exhaustive object in varImg
   varImg[[3]] <- names(fits)[-1]
+  print("Exhaustive subset selection finished")
 }
 
 ## ANNEAL Selection ##
 if(anneal) {
-
+  # Default to 8 variables selected in best model
+  # Anneal can be highly tuned, may be wise to test it out more
+  ann <- anneal(cor(dataset[,imgDataClean]),8)
+  varImg[[4]] <- names(dataset[,imgDataClean])[ann$bestsets]
+  print("Annealing subset selection finished")
 }
 
 ## GENETIC Selection ##
 if(genetic) {
-
+  gen <- genetic(cor(dataset[,imgDataClean]),8)
+  varImg[[5]] <- names(dataset[imgDataClean])[gen$bestsets]
+  print("Genetic subset selection finished")
 }
 
 ## BORUTA Selection ##
 if(boruta) {
-
+  bor <- Boruta(x=dataset[,imgData], y=dataset[,ttpTarget], pValue=0.15)
+  varImg[[6]] <- names(dataset[,imgData])[
+      which(bor$finalDecision == "Confirmed")]
+  print("Boruta subset selection finished")
 }
 
 # Returns vector of error matrix values and percent error
@@ -145,19 +158,21 @@ for(h in 1:length(targets)) {
         for(k in 1:iters) {
           cat("Building Models: target=", targets[h], ", input=[", varMain[i],
               ", ", names(varImg)[j], "]", sep="")
+          # Create copy of dataset to work in; prevents overwrites
+          ds <- dataset
           # Add new columns to pred data frame to store results
-          pred <- cbind(pred, a = vector(length=nrow(dataset)),
-              b = vector(length=nrow(dataset)), 
-              c = vector(length=nrow(dataset)))
+          pred <- cbind(pred, a = vector(length=nrow(ds)),
+              b = vector(length=nrow(ds)), c = vector(length=nrow(ds)),
+              d = vector(length=nrow(ds)))
           # Create name of column using var inputs and ML algorithm
           rfName <- paste0(targets[h], "_", varMain[i], "_", 
               names(varImg)[j], "_", "rf")
+          rfWName <- paste0(targets[h], "_", varMain[i], "_", 
+              names(varImg)[j], "_", "rfWeighted")
           svmName <- paste0(targets[h], "_", varMain[i], "_", 
               names(varImg)[j], "_", "svm")
           xgbName <- paste0(targets[h], "_", varMain[i], "_", 
               names(varImg)[j], "_", "xgb")
-          # Copy dataset to new variable to prevent overwrite issues
-          ds <- dataset
 
           # If k = 1, perform supervised learning
           if(k == 1) {
@@ -166,19 +181,23 @@ for(h in 1:length(targets)) {
             input <- c(varMain[[i]], varImg[[j]])
             # Set colnames of data frame to these names
             colnames(pred)[colnames(pred)=="a"] <- rfName
-            colnames(pred)[colnames(pred)=="b"] <- svmName
-            colnames(pred)[colnames(pred)=="c"] <- xgbName
+            colnames(pred)[colnames(pred)=="b"] <- rfWName
+            colnames(pred)[colnames(pred)=="c"] <- svmName
+            colnames(pred)[colnames(pred)=="d"] <- xgbName
+            alwaysTry <- varMain[[i]]
 
           # Else k != 1, perfrom semi-supervised learning
           } else {
-            cat(", Semi-supervised (k=", k, ")\n", sep="")
+            cat(", Semi-super (k=", k, ")\n", sep="")
             rfName <- paste0(rfName, "_k", k)
+            rfWName <- paste0(rfWName, "_k", k)
             svmName <- paste0(svmName, "_k", k)
             xgbName <- paste0(xgbName, "_k", k)
             # Set colnames of data frame to these names
             colnames(pred)[colnames(pred)=="a"] <- rfName
-            colnames(pred)[colnames(pred)=="b"] <- svmName
-            colnames(pred)[colnames(pred)=="c"] <- xgbName
+            colnames(pred)[colnames(pred)=="b"] <- rfWName
+            colnames(pred)[colnames(pred)=="c"] <- svmName
+            colnames(pred)[colnames(pred)=="d"] <- xgbName
             # Unsupervised random forest and add classifications to dataset
             rfUL <- randomForest(x=ds[,c(varMain[[i]], varImg[[j]])], 
                 ntree=1000, replace=FALSE, mtry=length(input), 
@@ -187,6 +206,7 @@ for(h in 1:length(targets)) {
                 cluster.only = TRUE))
             # Build input var list by combining baseline and imgData vars
             input <- c(varMain[[i]], varImg[[j]], "clusters")
+            alwaysTry <- c(varMain[[i]], "clusters")
           }
 
           # For each obs in dataset, leave one out and train model on
@@ -201,6 +221,11 @@ for(h in 1:length(targets)) {
                 data=ds[train,input], ntrees=10000, mtry=length(input),
                 replace=FALSE, na.action=na.roughfix)
             pred[m,rfName] <- predict(rf, ds[m, input])
+
+            ## WEIGHTED RANDOM FOREST ##
+            rfW <- ranger(ds[train, targets[h]]~., data=ds[train, input],
+                num.trees=1000, always.split.variable=alwaysTry)
+            pred[m, rfWName] <- predict(rfW, ds[m, input])$predictions
 
             ## SVM ##
             svm <- svm(x=as.matrix(ds[train,input]),
@@ -221,12 +246,11 @@ for(h in 1:length(targets)) {
           }
 
           # Calculate errors and error matrix
-          predErrors <- rbind(predErrors, c(rfName, 
-              errorMatrix(pred[,rfName], ds[,targets[h]])))
-          predErrors <- rbind(predErrors, c(svmName, 
-              errorMatrix(pred[,svmName], ds[,targets[h]])))
-          predErrors <- rbind(predErrors, c(xgbName, 
-              errorMatrix(pred[,xgbName], ds[,targets[h]])))
+          predErrors <- rbind(predErrors, 
+              c(rfName, errorMatrix(pred[,rfName], ds[,targets[h]])),
+              c(rfWName, errorMatrix(pred[,rfWName], ds[,targets[h]])),
+              c(svmName, errorMatrix(pred[,svmName], ds[,targets[h]])),
+              c(xgbName, errorMatrix(pred[,xgbName], ds[,targets[h]])))
 
         } # end loop iters
       } # end if varImg = NULL
