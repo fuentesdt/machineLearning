@@ -175,13 +175,13 @@ write.csv(cbind(sdata, crs$pr), file="./test_score_all.csv", row.names=FALSE)
 
 options(na.action=na.exclude)
 testdata  = crs$dataset[crs$test, c(crs$input, crs$target, crs$risk)  ]
-survConcordance(Surv(liver_TTP, liver_CensorModality)  ~predict(crs$survival,testdata  ),testdata  )
+print(survConcordance(Surv(liver_TTP, liver_CensorModality)  ~predict(crs$survival,testdata  ),testdata  ))
 
 # compare C-index error rate
 srcrfpred <- predict(rfsrc_pbc ,testdata  )
 rsf.err <- randomForestSRC:::cindex(testdata$liver_TTP, testdata$liver_CensorModality, srcrfpred$predicted)
 # FIXME - @gpauloski - getting conflicting values how does your compare ? 
-survConcordance(Surv(liver_TTP, liver_CensorModality)  ~srcrfpred$predicted,testdata  )
+print(survConcordance(Surv(liver_TTP, liver_CensorModality)  ~srcrfpred$predicted,testdata  ))
 cat("RSF :", rsf.err, "\n")
 
 # Greg's C-index
