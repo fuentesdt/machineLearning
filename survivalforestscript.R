@@ -160,4 +160,8 @@ sdata <- crs$dataset[crs$test,]
 write.csv(cbind(sdata, crs$pr), file="./test_score_all.csv", row.names=FALSE)
 
 
-# FIXME: @gpauloski add c-index calculations on test set
+# Greg's C-index
+source("cindex.R")
+# cindex(actual values, predicted values)
+c_ind <- cindex(crs$dataset[crs$test,crs$target], crs$pr)
+cat("C-index =", c_ind, "\n")
