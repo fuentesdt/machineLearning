@@ -119,6 +119,13 @@ library(survival, quietly=TRUE)
 crs$survival <- coxph(Surv(liver_TTP, liver_CensorModality) ~ liver_gender + liver_smoking + liver_AFP + liver_BCLC + liver_Volume + liver_Pre_DENOISE + liver_Art_DENOISE + liver_Ven_DENOISE + liver_Del_DENOISE + liver_Pre_GRADIENT + liver_Art_GRADIENT + liver_Ven_GRADIENT + liver_Del_GRADIENT + liver_Pre_MEAN_RADIUS_1 + liver_Art_MEAN_RADIUS_1 + liver_Ven_MEAN_RADIUS_1 + liver_Del_MEAN_RADIUS_1 + liver_Pre_SIGMA_RADIUS_1 + liver_Art_SIGMA_RADIUS_1 + liver_Ven_SIGMA_RADIUS_1 + liver_Del_SIGMA_RADIUS_1 + necrosis_Volume + necrosis_Pre_DENOISE + necrosis_Art_DENOISE + necrosis_Ven_DENOISE + necrosis_Del_DENOISE + necrosis_Pre_GRADIENT + necrosis_Art_GRADIENT + necrosis_Ven_GRADIENT + necrosis_Del_GRADIENT + necrosis_Pre_MEAN_RADIUS_1 + necrosis_Art_MEAN_RADIUS_1 + necrosis_Ven_MEAN_RADIUS_1 + necrosis_Del_MEAN_RADIUS_1 + necrosis_Pre_SIGMA_RADIUS_1 + necrosis_Art_SIGMA_RADIUS_1 + necrosis_Ven_SIGMA_RADIUS_1 + necrosis_Del_SIGMA_RADIUS_1 + viable_Volume + viable_Pre_DENOISE + viable_Art_DENOISE + viable_Ven_DENOISE + viable_Del_DENOISE + viable_Pre_GRADIENT + viable_Art_GRADIENT + viable_Ven_GRADIENT + viable_Del_GRADIENT + viable_Pre_MEAN_RADIUS_1 + viable_Art_MEAN_RADIUS_1 + viable_Ven_MEAN_RADIUS_1 + viable_Del_MEAN_RADIUS_1 + viable_Pre_SIGMA_RADIUS_1 + viable_Art_SIGMA_RADIUS_1 + viable_Ven_SIGMA_RADIUS_1 + viable_Del_SIGMA_RADIUS_1,
       data=crs$dataset[crs$train,c(crs$input, crs$risk, crs$target)])
 
+library(randomForestSRC, quietly=TRUE)
+#   install.packages("randomForestSRC",repos='http://cran.us.r-project.org')
+rfsrc_pbc <- rfsrc(Surv(liver_TTP, liver_CensorModality) ~ liver_gender + liver_smoking + liver_AFP + liver_BCLC + liver_Volume + liver_Pre_DENOISE + liver_Art_DENOISE + liver_Ven_DENOISE + liver_Del_DENOISE + liver_Pre_GRADIENT + liver_Art_GRADIENT + liver_Ven_GRADIENT + liver_Del_GRADIENT + liver_Pre_MEAN_RADIUS_1 + liver_Art_MEAN_RADIUS_1 + liver_Ven_MEAN_RADIUS_1 + liver_Del_MEAN_RADIUS_1 + liver_Pre_SIGMA_RADIUS_1 + liver_Art_SIGMA_RADIUS_1 + liver_Ven_SIGMA_RADIUS_1 + liver_Del_SIGMA_RADIUS_1 + necrosis_Volume + necrosis_Pre_DENOISE + necrosis_Art_DENOISE + necrosis_Ven_DENOISE + necrosis_Del_DENOISE + necrosis_Pre_GRADIENT + necrosis_Art_GRADIENT + necrosis_Ven_GRADIENT + necrosis_Del_GRADIENT + necrosis_Pre_MEAN_RADIUS_1 + necrosis_Art_MEAN_RADIUS_1 + necrosis_Ven_MEAN_RADIUS_1 + necrosis_Del_MEAN_RADIUS_1 + necrosis_Pre_SIGMA_RADIUS_1 + necrosis_Art_SIGMA_RADIUS_1 + necrosis_Ven_SIGMA_RADIUS_1 + necrosis_Del_SIGMA_RADIUS_1 + viable_Volume + viable_Pre_DENOISE + viable_Art_DENOISE + viable_Ven_DENOISE + viable_Del_DENOISE + viable_Pre_GRADIENT + viable_Art_GRADIENT + viable_Ven_GRADIENT + viable_Del_GRADIENT + viable_Pre_MEAN_RADIUS_1 + viable_Art_MEAN_RADIUS_1 + viable_Ven_MEAN_RADIUS_1 + viable_Del_MEAN_RADIUS_1 + viable_Pre_SIGMA_RADIUS_1 + viable_Art_SIGMA_RADIUS_1 + viable_Ven_SIGMA_RADIUS_1 + viable_Del_SIGMA_RADIUS_1,
+      data=crs$dataset[crs$train,c(crs$input, crs$risk, crs$target)],
+                   nsplit = 10, na.action = "na.impute",
+                  tree.err = TRUE,importance = TRUE)
+
 # Print the results of the modelling.
 
 summary(crs$survival)
@@ -161,7 +168,6 @@ sdata <- crs$dataset[crs$test,]
 write.csv(cbind(sdata, crs$pr), file="./test_score_all.csv", row.names=FALSE)
 
 
-# compare to @gpauloski c-index calculations on test set
 
 #options(na.action=na.exclude)
 #fit <- coxph(Surv(time, status) ~ ph.ecog + age + sex, lung)
@@ -171,9 +177,19 @@ options(na.action=na.exclude)
 testdata  = crs$dataset[crs$test, c(crs$input, crs$target, crs$risk)  ]
 survConcordance(Surv(liver_TTP, liver_CensorModality)  ~predict(crs$survival,testdata  ),testdata  )
 
+# compare C-index error rate
+srcrfpred <- predict(rfsrc_pbc ,testdata  )
+rsf.err <- randomForestSRC:::cindex(testdata$liver_TTP, testdata$liver_CensorModality, srcrfpred$predicted)
+# FIXME - @gpauloski - getting conflicting values how does your compare ? 
+survConcordance(Surv(liver_TTP, liver_CensorModality)  ~srcrfpred$predicted,testdata  )
+cat("RSF :", rsf.err, "\n")
+
 # Greg's C-index
 source("cindex.R")
 #   install.packages("compareC",repos='http://cran.us.r-project.org')
 # cindex(actual values, predicted values)
+# FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
+# FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
+# FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
 c_ind <- cindex(crs$dataset[crs$test,crs$target], crs$pr)
 cat("C-index =", c_ind, "\n")
