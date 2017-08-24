@@ -189,7 +189,5 @@ source("cindex.R")
 #   install.packages("compareC",repos='http://cran.us.r-project.org')
 # cindex(actual values, predicted values)
 # FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
-# FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
-# FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
-c_ind <- cindex(crs$dataset[crs$test,crs$target], crs$pr)
+c_ind <- cindex(crs$dataset[crs$test,crs$target], predict(crs$survival, testdata))
 cat("C-index =", c_ind, "\n")
