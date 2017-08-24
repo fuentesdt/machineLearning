@@ -49,6 +49,8 @@ for(i in 1:(length(varMain)-1)) {
 # Create null model based on BCLC
 # @gpauloski - where did you get this null model from ? 
 # https://stats.stackexchange.com/questions/259636/what-is-null-model-in-regression-and-how-does-it-related-to-null-hypothesis
+# @fuentesdt - Here's what I looked at
+# https://stackoverflow.com/questions/24225451/how-to-create-a-null-model-for-conditional-logistic-regression-in-r
 dataset <- cbind(mNull = lm(liver_TTP ~ liver_BCLC, data=dataset)$fitted.values,    dataset)
 
 # Create list of img data subsets
