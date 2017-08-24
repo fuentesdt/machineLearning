@@ -14,7 +14,7 @@ anneal <- TRUE
 genetic <- TRUE 
 boruta <- TRUE 
 semisupervised <- TRUE    # Perform semisupervised learning 
-kClusters <- 10           # Number of clusters in SSL
+kClusters <- 10           # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
@@ -200,8 +200,8 @@ for(h in 1:length(targets)) {
             colnames(pred)[colnames(pred)=="d"] <- xgbName
             # Unsupervised random forest and add classifications to dataset
             rfUL <- randomForest(x=ds[,c(varMain[[i]], varImg[[j]])], 
-                ntree=1000, replace=FALSE, mtry=length(input), 
-                na.action=na.roughfix)
+                ntree=1000, replace=FALSE, mtry=length(c(varMain[[i]], 
+                varImg[[j]])), na.action=na.roughfix)
             ds <- cbind(ds, clusters = pam(1-rfUL$proximity, k=k, diss=TRUE, 
                 cluster.only = TRUE))
             # Build input var list by combining baseline and imgData vars

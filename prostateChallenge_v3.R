@@ -12,7 +12,7 @@ stepwise <- FALSE
 exhaustive <- TRUE 
 anneal <- TRUE 
 genetic <- FALSE 
-boruta <- TRUE 
+boruta <- FALSE
 semisupervised <- TRUE    # Perform semisupervised learning 
 kClusters <- 10           # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
@@ -140,8 +140,8 @@ for(h in 1:length(targets)) {
             input <- varImg[[j]]
             # Set colnames of data frame to these names
             colnames(pred)[colnames(pred)=="a"] <- rfName
-            colnames(pred)[colnames(pred)=="c"] <- svmName
-            colnames(pred)[colnames(pred)=="d"] <- xgbName
+            colnames(pred)[colnames(pred)=="b"] <- svmName
+            colnames(pred)[colnames(pred)=="c"] <- xgbName
 
           # Else k != 1, perfrom semi-supervised learning
           } else {
@@ -151,8 +151,8 @@ for(h in 1:length(targets)) {
             xgbName <- paste0(xgbName, "_k", k)
             # Set colnames of data frame to these names
             colnames(pred)[colnames(pred)=="a"] <- rfName
-            colnames(pred)[colnames(pred)=="c"] <- svmName
-            colnames(pred)[colnames(pred)=="d"] <- xgbName
+            colnames(pred)[colnames(pred)=="b"] <- svmName
+            colnames(pred)[colnames(pred)=="c"] <- xgbName
             # Unsupervised random forest and add classifications to dataset
             rfUL <- randomForest(x=ds[,varImg[[j]]], 
                 ntree=1000, replace=FALSE, mtry=length(varImg[[j]]), 
@@ -206,6 +206,7 @@ for(h in 1:length(targets)) {
 } # end loop targets
 
 # Transpose pred matrix and remove index vector
+cat("Model building finished. Saving results...\n")
 pred <- t(pred[,2:ncol(pred)])
 # Convert predErrors to data frame and give it column names
 predErrors <- data.frame(predErrors)
@@ -215,6 +216,8 @@ predErrors <- cbind(predErrors, rank = rank(predErrors$error), pred)
 # Clean up colnames and modelIDs
 for(i in 8:ncol(predErrors)) colnames(predErrors)[i] <- paste0("obs_", i-7) 
 predErrors[,1] <- gsub("_liver_", "_", predErrors[,1])
+# Remove error matrix columns b/c that only worked for binary classifications
+predErrors <- predErrors[,-(2:5)]
 # Write predErrors to csv
 write.csv(predErrors, file=  outputFile, row.names = FALSE)
-cat("\nResults saved in", outputFile, "\n")
+cat("Results saved in", outputFile, "\n\n")
