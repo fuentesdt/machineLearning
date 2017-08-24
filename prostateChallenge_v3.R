@@ -22,7 +22,7 @@ targets <- c("ggg")
 dataset$ggg <- factor(dataset$ggg)
 
 # Create list of img data subsets
-varImg <- list("volumes" = NULL, "stepwise" = NULL, "exhaustive" = NULL,
+varImg <- list("allVars" = NULL, "stepwise" = NULL, "exhaustive" = NULL,
     "anneal" = NULL, "genetic" = NULL, "boruta" = NULL)
 
 # Get list of col names for image data and remove empty columns
