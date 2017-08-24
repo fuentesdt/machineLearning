@@ -9,6 +9,9 @@
 #   install.packages("maptree",repos='http://cran.us.r-project.org')
 #   install.packages("RANN",repos='http://cran.us.r-project.org')
 #   install.packages("tree",repos='http://cran.us.r-project.org')
+#   install.packages("ranger",repos='http://cran.us.r-project.org')
+#   install.packages("subselect",repos='http://cran.us.r-project.org')
+#   install.packages("Boruta",repos='http://cran.us.r-project.org')
 # 
 # Load dependencies
 libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", "ranger", 
@@ -20,13 +23,13 @@ invisible(suppressMessages(lapply(libs, library, quietly = TRUE,
 dataset <- read.csv(paste0("file:///home/gpauloski/git-repos/TACE/",
     "gmmdatamatrixfixed22Aug2017_Greg_edited.csv"))
 volumes <- TRUE
-stepwise <- TRUE   
+stepwise <- FALSE   
 exhaustive <- FALSE 
-anneal <- TRUE 
+anneal <- FALSE 
 genetic <- TRUE 
 boruta <- TRUE 
 semisupervised <- TRUE    # Perform semisupervised learning 
-kClusters <- 10           # Number of clusters in SSL (Cluster 1 is skipped)
+kClusters <- 5            # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
@@ -96,6 +99,7 @@ if(stepwise) {
   # Add best subset to stepwise object in varImg
   varImg[[2]] <- names(coefs)[which(coefs < 0.15)]
   print("Stepwise subset selection finished")
+  print (varImg[[2]])
 }
 
 ## EXHAUSTIVE Selection ##
@@ -108,6 +112,7 @@ if(exhaustive) {
   # Add best subset to exhaustive object in varImg
   varImg[[3]] <- names(fits)[-1]
   print("Exhaustive subset selection finished")
+  print (varImg[[3]])
 }
 
 ## ANNEAL Selection ##
@@ -117,6 +122,7 @@ if(anneal) {
   ann <- anneal(cor(dataset[,imgDataClean]),8)
   varImg[[4]] <- names(dataset[,imgDataClean])[ann$bestsets]
   print("Annealing subset selection finished")
+  print (varImg[[4]])
 }
 
 ## GENETIC Selection ##
@@ -124,14 +130,16 @@ if(genetic) {
   gen <- genetic(cor(dataset[,imgDataClean]),8)
   varImg[[5]] <- names(dataset[imgDataClean])[gen$bestsets]
   print("Genetic subset selection finished")
+  print (varImg[[5]])
 }
 
 ## BORUTA Selection ##
 if(boruta) {
-  bor <- Boruta(x=dataset[,imgData], y=dataset[,ttpTarget], pValue=0.15)
+  bor <- Boruta(x=dataset[,imgData], y=dataset[,ttpTarget], pValue=0.35)
   varImg[[6]] <- names(dataset[,imgData])[
       which(bor$finalDecision == "Confirmed")]
   print("Boruta subset selection finished")
+  print (varImg[[6]])
 }
 
 # Returns vector of error matrix values and percent error
