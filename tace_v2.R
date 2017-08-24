@@ -29,7 +29,7 @@ anneal <- FALSE
 genetic <- TRUE 
 boruta <- TRUE 
 semisupervised <- TRUE    # Perform semisupervised learning 
-kClusters <- 5            # Number of clusters in SSL (Cluster 1 is skipped)
+kClusters <- 3            # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
@@ -47,6 +47,8 @@ for(i in 1:(length(varMain)-1)) {
       levels=levels(factor(dataset[,varMain[i]]))))
 }
 # Create null model based on BCLC
+# @gpauloski - where did you get this null model from ? 
+# https://stats.stackexchange.com/questions/259636/what-is-null-model-in-regression-and-how-does-it-related-to-null-hypothesis
 dataset <- cbind(mNull = lm(liver_TTP ~ liver_BCLC, data=dataset)$fitted.values,    dataset)
 
 # Create list of img data subsets
