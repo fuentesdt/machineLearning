@@ -61,41 +61,10 @@ plotTree <- function(dTree, dataset, target, input,
   # scatter plot matrix with children of a node, each node in the tree has to 
   # be labeled first
 
-  # Add columns for node number and empty vector for parent node number
+  # Add columns for node number and parents node number (root node will have
+  # its parent node = 0 b/c the root has no parent)
   dTree$frame <- cbind(dTree$frame, node = as.numeric(rownames(dTree$frame)),
-      parent = integer(nrow(dTree$frame)))
-
-  # Get list of nodes, this will be used to keep track of which nodes have 
-  # been labeled with a parent
-  nodes <- dTree$frame$node
-
-  # Loop through all nodes in tree and find it's parent node
-  for(i in 1:nrow(dTree$frame)) {
-
-    # Ignore the first node (root node) because it cannot have a parent
-    if(dTree$frame$node[i] != 1) {
-
-      # Set parent of current node equal to the node before the current node in
-      # 'nodes'
-      dTree$frame$parent[i] <- nodes[which(nodes == dTree$frame$node[i])-1]
-
-      # If current node is a leaf, remove this node from 'nodes'
-      # This is necessary because a leaf cannot be a parent so removing it from
-      # 'nodes' after assigining its parent prevents it from being used as a 
-      # parent in later operations
-      if(dTree$frame$var[i] == "<leaf>") {
-        nodes <- nodes[-(which(nodes == dTree$frame$node[i]))]
-      }
-
-      # If the current node's parent now has two children, remove that parent
-      # from 'nodes' since each parent has exactly two children in binary tree
-      # This prevents that parent from being assigned another child in later
-      # iterations
-      if(length(which(dTree$frame$parent == dTree$frame$parent[i])) == 2) {
-        nodes <- nodes[-(which(nodes == dTree$frame$parent[i]))]
-      }
-    }
-  }
+      parent = floor(as.numeric(rownames(dTree$frame)) / 2))
 
   # Get list of observations left in each node after splits
 
