@@ -1,3 +1,18 @@
+# Usage: source("tace_v2.R")
+#     -or- 
+# Usage: Rscript tace_v2.R
+# 
+# dependencies:  
+#   install.packages("leaps",repos='http://cran.us.r-project.org')
+#   install.packages("caret",repos='http://cran.us.r-project.org')
+#   install.packages("GGally",repos='http://cran.us.r-project.org')
+#   install.packages("maptree",repos='http://cran.us.r-project.org')
+#   install.packages("RANN",repos='http://cran.us.r-project.org')
+#   install.packages("tree",repos='http://cran.us.r-project.org')
+#   install.packages("ranger",repos='http://cran.us.r-project.org')
+#   install.packages("subselect",repos='http://cran.us.r-project.org')
+#   install.packages("Boruta",repos='http://cran.us.r-project.org')
+# 
 # Load dependencies
 libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", "ranger", 
     "caret", "cluster", "subselect", "Boruta")
@@ -8,13 +23,13 @@ invisible(suppressMessages(lapply(libs, library, quietly = TRUE,
 dataset <- read.csv(paste0("file:///home/gpauloski/git-repos/TACE/",
     "gmmdatamatrixfixed22Aug2017_Greg_edited.csv"))
 volumes <- TRUE
-stepwise <- TRUE   
+stepwise <- FALSE   
 exhaustive <- FALSE 
-anneal <- TRUE 
+anneal <- FALSE 
 genetic <- TRUE 
 boruta <- TRUE 
 semisupervised <- TRUE    # Perform semisupervised learning 
-kClusters <- 10           # Number of clusters in SSL (Cluster 1 is skipped)
+kClusters <- 3            # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
@@ -32,6 +47,8 @@ for(i in 1:(length(varMain)-1)) {
       levels=levels(factor(dataset[,varMain[i]]))))
 }
 # Create null model based on BCLC
+# @gpauloski - where did you get this null model from ? 
+# https://stats.stackexchange.com/questions/259636/what-is-null-model-in-regression-and-how-does-it-related-to-null-hypothesis
 dataset <- cbind(mNull = lm(liver_TTP ~ liver_BCLC, data=dataset)$fitted.values,    dataset)
 
 # Create list of img data subsets
@@ -84,6 +101,7 @@ if(stepwise) {
   # Add best subset to stepwise object in varImg
   varImg[[2]] <- names(coefs)[which(coefs < 0.15)]
   print("Stepwise subset selection finished")
+  print (varImg[[2]])
 }
 
 ## EXHAUSTIVE Selection ##
@@ -96,6 +114,7 @@ if(exhaustive) {
   # Add best subset to exhaustive object in varImg
   varImg[[3]] <- names(fits)[-1]
   print("Exhaustive subset selection finished")
+  print (varImg[[3]])
 }
 
 ## ANNEAL Selection ##
@@ -105,6 +124,7 @@ if(anneal) {
   ann <- anneal(cor(dataset[,imgDataClean]),8)
   varImg[[4]] <- names(dataset[,imgDataClean])[ann$bestsets]
   print("Annealing subset selection finished")
+  print (varImg[[4]])
 }
 
 ## GENETIC Selection ##
@@ -112,14 +132,16 @@ if(genetic) {
   gen <- genetic(cor(dataset[,imgDataClean]),8)
   varImg[[5]] <- names(dataset[imgDataClean])[gen$bestsets]
   print("Genetic subset selection finished")
+  print (varImg[[5]])
 }
 
 ## BORUTA Selection ##
 if(boruta) {
-  bor <- Boruta(x=dataset[,imgData], y=dataset[,ttpTarget], pValue=0.15)
+  bor <- Boruta(x=dataset[,imgData], y=dataset[,ttpTarget], pValue=0.35)
   varImg[[6]] <- names(dataset[,imgData])[
       which(bor$finalDecision == "Confirmed")]
   print("Boruta subset selection finished")
+  print (varImg[[6]])
 }
 
 # Returns vector of error matrix values and percent error
