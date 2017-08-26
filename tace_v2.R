@@ -13,6 +13,8 @@
 #   install.packages("subselect",repos='http://cran.us.r-project.org')
 #   install.packages("Boruta",repos='http://cran.us.r-project.org')
 # 
+options("width"=180)
+rm(list=ls())
 # Load dependencies
 libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", "ranger", 
     "caret", "cluster", "subselect", "Boruta")
@@ -29,7 +31,7 @@ anneal <- FALSE
 genetic <- TRUE 
 boruta <- TRUE 
 semisupervised <- TRUE    # Perform semisupervised learning 
-kClusters <- 3            # Number of clusters in SSL (Cluster 1 is skipped)
+kClusters <- 2            # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
@@ -41,18 +43,19 @@ dataset <- cbind(
     random = as.factor(round(runif(nrow(dataset), 1, 2))), dataset)
 
 # Set variable columns and convert strings to numeric 
-varMain <- c("liver_BCLC", "liver_CLIP", "liver_Okuda", "liver_TNM", "mNull")
+varMain <- c("liver_BCLC", "liver_CLIP", "liver_Okuda", "liver_TNM")
 for(i in 1:(length(varMain)-1)) {
   dataset[,varMain[i]] <- as.numeric(factor(dataset[,varMain[i]],
       levels=levels(factor(dataset[,varMain[i]]))))
 }
-# Create null model based on BCLC
-# https://stats.stackexchange.com/questions/259636/what-is-null-model-in-regression-and-how-does-it-related-to-null-hypothesis
-# https://stackoverflow.com/questions/24225451/how-to-create-a-null-model-for-conditional-logistic-regression-in-r
-dataset <- cbind(mNull = lm(liver_TTP ~ liver_BCLC, data=dataset)$fitted.values,    dataset)
+
 
 # Create list of img data subsets
-varImg <- list("volumes" = NULL, "stepwise" = NULL, "exhaustive" = NULL,
+# @gpauloski null model should be without imaging
+## NULL Model is without image features Selection ##
+# https://stats.stackexchange.com/questions/259636/what-is-null-model-in-regression-and-how-does-it-related-to-null-hypothesis
+# https://stackoverflow.com/questions/24225451/how-to-create-a-null-model-for-conditional-logistic-regression-in-r
+varImg <- list("nullModel"=NULL,"volumes" = NULL, "stepwise" = NULL, "exhaustive" = NULL,
     "anneal" = NULL, "genetic" = NULL, "boruta" = NULL)
 
 # Filter only baseline obs
@@ -79,6 +82,7 @@ highCor <- findCorrelation(cor(dataProcess), cutoff = 0.8)
 imgDataClean <- setdiff(imgData, colnames(dataProcess)[highCor])
 dataProcess <- dataProcess[,-highCor]
 
+
 ## Volume Selection ##
 if(volumes) {
   varImg$volumes <- c("liver_Volume", "necrosis_Volume", "viable_Volume", 
@@ -99,9 +103,9 @@ if(stepwise) {
   # Get best subset from regression output
   coefs <- summary(stpReg)$coefficients[,4]  
   # Add best subset to stepwise object in varImg
-  varImg[[2]] <- names(coefs)[which(coefs < 0.15)]
+  varImg$stepwise <- names(coefs)[which(coefs < 0.15)]
   print("Stepwise subset selection finished")
-  print (varImg[[2]])
+  print (varImg$stepwise)
 }
 
 ## EXHAUSTIVE Selection ##
@@ -112,9 +116,9 @@ if(exhaustive) {
   # Get names of vars in best subset
   fits <- coef(reg,8)
   # Add best subset to exhaustive object in varImg
-  varImg[[3]] <- names(fits)[-1]
+  varImg$exhaustive <- names(fits)[-1]
   print("Exhaustive subset selection finished")
-  print (varImg[[3]])
+  print (varImg$exhaustive )
 }
 
 ## ANNEAL Selection ##
@@ -122,26 +126,26 @@ if(anneal) {
   # Default to 8 variables selected in best model
   # Anneal can be highly tuned, may be wise to test it out more
   ann <- anneal(cor(dataset[,imgDataClean]),8)
-  varImg[[4]] <- names(dataset[,imgDataClean])[ann$bestsets]
+  varImg$anneal <- names(dataset[,imgDataClean])[ann$bestsets]
   print("Annealing subset selection finished")
-  print (varImg[[4]])
+  print (varImg$anneal)
 }
 
 ## GENETIC Selection ##
 if(genetic) {
   gen <- genetic(cor(dataset[,imgDataClean]),8)
-  varImg[[5]] <- names(dataset[imgDataClean])[gen$bestsets]
+  varImg$genetic <- names(dataset[imgDataClean])[gen$bestsets]
   print("Genetic subset selection finished")
-  print (varImg[[5]])
+  print (varImg$genetic)
 }
 
 ## BORUTA Selection ##
 if(boruta) {
   bor <- Boruta(x=dataset[,imgData], y=dataset[,ttpTarget], pValue=0.35)
-  varImg[[6]] <- names(dataset[,imgData])[
+  varImg$boruta <- names(dataset[,imgData])[
       which(bor$finalDecision == "Confirmed")]
   print("Boruta subset selection finished")
-  print (varImg[[6]])
+  print (varImg$boruta)
 }
 
 # Returns vector of error matrix values and percent error
@@ -172,9 +176,6 @@ for(h in 1:length(targets)) {
   
     # Loop for each set of imgData
     for(j in 1:length(varImg)) {
-
-      # Only build models if list of img data !null
-      if(!(is.null(varImg[[j]]))) {
 
         # Loop for each in iters. See iters variable for more info
         for(k in 1:iters) {
@@ -209,7 +210,8 @@ for(h in 1:length(targets)) {
             alwaysTry <- varMain[[i]]
 
           # Else k != 1, perfrom semi-supervised learning
-          } else {
+          # Only run clustering if  img data !null
+          } else if(!(is.null(varImg[[j]]))) {
             cat(", Semi-super (k=", k, ")\n", sep="")
             rfName <- paste0(rfName, "_k", k)
             rfWName <- paste0(rfWName, "_k", k)
@@ -229,7 +231,11 @@ for(h in 1:length(targets)) {
             # Build input var list by combining baseline and imgData vars
             input <- c(varMain[[i]], varImg[[j]], "clusters")
             alwaysTry <- c(varMain[[i]], "clusters")
-          }
+          } else {
+            cat("skip me\n" , sep="")
+            break
+          } 
+
 
           # For each obs in dataset, leave one out and train model on
           # remaining obs in dataset then use obs that was left out as test obs
@@ -239,21 +245,30 @@ for(h in 1:length(targets)) {
             train <- train[-m]
 
             ## RANDOM FOREST ##
-            rf <- randomForest(ds[train,targets[h]]~.,
-                data=ds[train,input], ntrees=10000, mtry=length(input),
-                replace=FALSE, na.action=na.roughfix)
-            pred[m,rfName] <- predict(rf, ds[m, input])
+            modelFormula <- as.formula( paste0(targets[h], " ~ . ") )
+            rf <- randomForest(modelFormula, data=ds[train,c(input,targets[h])], ntrees=501,  replace=FALSE, na.action=na.roughfix)
+            predInput = ds[m, input]
+            ## Error check for one row ##
+            if (!is.data.frame(predInput ) ) {
+              predInput = as.data.frame(ds[m, input])
+              colnames(predInput )<- input
+            }
+            pred[m,rfName] <- predict(rf, predInput )  
 
             ## WEIGHTED RANDOM FOREST ##
-            rfW <- ranger(ds[train, targets[h]]~., data=ds[train, input],
-                num.trees=1000, always.split.variable=alwaysTry)
-            pred[m, rfWName] <- predict(rfW, ds[m, input])$predictions
+            if(!(is.null(varImg[[j]]))) {
+            rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=501, always.split.variable=alwaysTry)
+            } else {
+            rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=501 )
+            } 
+            pred[m, rfWName] <- predict(rfW, predInput )$predictions
+
 
             ## SVM ##
             svm <- svm(x=as.matrix(ds[train,input]),
                 y=ds[train,targets[h]], kernel="polynomial", degree=3)
             if(!(any(which(is.na(ds[m,input]))))) {
-              pred[m,svmName] <- predict(svm, ds[m,input])
+              pred[m,svmName] <- predict(svm, predInput )
             } else pred[m,svmName] <- "NA"			
 
             ## XGBOOST ##
@@ -265,6 +280,7 @@ for(h in 1:length(targets)) {
                  objective="binary:logistic", verbose=0)
             pred[m,xgbName] <- ifelse(round(predict(bst, 
                 tstList$data)) == 0, 1, 2)
+
           }
 
           # Calculate errors and error matrix
@@ -275,7 +291,6 @@ for(h in 1:length(targets)) {
               c(xgbName, errorMatrix(pred[,xgbName], ds[,targets[h]])))
 
         } # end loop iters
-      } # end if varImg = NULL
     } # end loop varImg
   } # end loop varMain
 } # end loop targets
