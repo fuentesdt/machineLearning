@@ -18,8 +18,7 @@ rm(list=ls())
 # Load dependencies
 libs <- c("randomForest", "e1071", "xgboost", "leaps", "MASS", "ranger", 
     "caret", "cluster", "subselect", "Boruta")
-invisible(suppressMessages(lapply(libs, library, quietly = TRUE, 
-    character.only = TRUE)))
+lapply(libs, library,  character.only = TRUE)
 
 # Parameters/Load Data
 dataset <- read.csv(paste0("file:///home/gpauloski/git-repos/TACE/",
@@ -43,10 +42,11 @@ dataset <- cbind(
     random = as.factor(round(runif(nrow(dataset), 1, 2))), dataset)
 
 # Set variable columns and convert strings to numeric 
-varMain <- c("liver_BCLC", "liver_CLIP", "liver_Okuda", "liver_TNM")
-for(i in 1:(length(varMain)-1)) {
-  dataset[,varMain[i]] <- as.numeric(factor(dataset[,varMain[i]],
-      levels=levels(factor(dataset[,varMain[i]]))))
+varMain <- c( "liver_TNM","liver_BCLC", "liver_CLIP", "liver_Okuda")
+for(i in 1:length(varMain)) {
+  dataset[,varMain[i]] <- as.numeric(factor(dataset[,varMain[i]], 
+                                            levels=levels(factor(dataset[,varMain[i]])) 
+                                           ))
 }
 
 
@@ -199,7 +199,7 @@ for(h in 1:length(targets)) {
 
           # If k = 1, perform supervised learning
           if(k == 1) {
-            cat(", Supervised", "\n", sep="")
+            cat(", Supervised: ",  sep="")
             # Build input var list by combining baseline and imgData vars
             input <- c(varMain[[i]], varImg[[j]])
             # Set colnames of data frame to these names
@@ -212,7 +212,7 @@ for(h in 1:length(targets)) {
           # Else k != 1, perfrom semi-supervised learning
           # Only run clustering if  img data !null
           } else if(!(is.null(varImg[[j]]))) {
-            cat(", Semi-super (k=", k, ")\n", sep="")
+            cat(", Semi-super (k=", k, "): ", sep="")
             rfName <- paste0(rfName, "_k", k)
             rfWName <- paste0(rfWName, "_k", k)
             svmName <- paste0(svmName, "_k", k)
@@ -245,6 +245,7 @@ for(h in 1:length(targets)) {
             train <- train[-m]
 
             ## RANDOM FOREST ##
+            #cat(", RF ", sep="")
             modelFormula <- as.formula( paste0(targets[h], " ~ . ") )
             rf <- randomForest(modelFormula, data=ds[train,c(input,targets[h])], ntrees=501,  replace=FALSE, na.action=na.roughfix)
             predInput = ds[m, input]
@@ -256,6 +257,7 @@ for(h in 1:length(targets)) {
             pred[m,rfName] <- predict(rf, predInput )  
 
             ## WEIGHTED RANDOM FOREST ##
+            #cat(", WRF ", sep="")
             if(!(is.null(varImg[[j]]))) {
             rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=501, always.split.variable=alwaysTry)
             } else {
@@ -265,13 +267,15 @@ for(h in 1:length(targets)) {
 
 
             ## SVM ##
+            #cat(", SVM ", sep="")
             svm <- svm(x=as.matrix(ds[train,input]),
                 y=ds[train,targets[h]], kernel="polynomial", degree=3)
-            if(!(any(which(is.na(ds[m,input]))))) {
+            if(!(any(which(is.na(ds[m,input]))) )) {
               pred[m,svmName] <- predict(svm, predInput )
             } else pred[m,svmName] <- "NA"			
 
             ## XGBOOST ##
+            #cat(", XGB ", sep="")
             trnList <- list("data" = as.matrix(ds[train,input]), 
                 "label" = ifelse(ds[train,targets[h]] == 1, 0, 1))
             tstList <- list("data" = as.matrix(ds[m,input]), 
@@ -284,11 +288,12 @@ for(h in 1:length(targets)) {
           }
 
           # Calculate errors and error matrix
+          cat(", pred errors \n ", sep="")
           predErrors <- rbind(predErrors, 
-              c(rfName, errorMatrix(pred[,rfName], ds[,targets[h]])),
-              c(rfWName, errorMatrix(pred[,rfWName], ds[,targets[h]])),
-              c(svmName, errorMatrix(pred[,svmName], ds[,targets[h]])),
-              c(xgbName, errorMatrix(pred[,xgbName], ds[,targets[h]])))
+              c(rfName,  errorMatrix(pred[,rfName],  ds[,targets[h]]) ),
+              c(rfWName, errorMatrix(pred[,rfWName], ds[,targets[h]]) ),
+              c(svmName, errorMatrix(pred[,svmName], ds[,targets[h]]) ),
+              c(xgbName, errorMatrix(pred[,xgbName], ds[,targets[h]]) ))
 
         } # end loop iters
     } # end loop varImg
