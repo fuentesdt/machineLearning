@@ -301,15 +301,21 @@ for(h in 1:length(targets)) {
 } # end loop targets
 
 # Transpose pred matrix and remove index vector
-pred <- t(pred[,2:ncol(pred)])
+predTranspose <- data.frame(t(pred[,2:ncol(pred)]))
+# Clean up colnames and modelIDs
+for(i in 1:ncol(predTranspose)) colnames(predTranspose)[i] <- paste0("obs_", i) 
+
 # Convert predErrors to data frame and give it column names
 predErrors <- data.frame(predErrors)
 colnames(predErrors) <- predErrorNames
 # Combine predErrors and pred
-predErrors <- cbind(predErrors, rank = rank(predErrors$error), pred)
-# Clean up colnames and modelIDs
-for(i in 8:ncol(predErrors)) colnames(predErrors)[i] <- paste0("obs_", i-7) 
-predErrors[,1] <- gsub("_liver_", "_", predErrors[,1])
+predErrors <- cbind(predErrors, rank = rank(predErrors$error)
+
+# SQL-type join on datamatrix
+# @gpauloski: useful sql like commands to avoid indexing problems - https://stackoverflow.com/questions/1299871/how-to-join-merge-data-frames-inner-outer-left-right
+# STYLE: @gpauloski - SQL is your friend
+predMerge <- merge( y=predTranspose, x=predErrors ,by.y="row.names", by.x="modelID" )
+
 # Write predErrors to csv
-write.csv(predErrors, file=  outputFile, row.names = FALSE)
+write.csv(predMerge , file=  outputFile, row.names = FALSE)
 cat("\nResults saved in", outputFile, "\n")
