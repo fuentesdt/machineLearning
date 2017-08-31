@@ -30,7 +30,7 @@ anneal <- FALSE
 genetic <- TRUE 
 boruta <- TRUE 
 semisupervised <- TRUE    # Perform semisupervised learning 
-kClusters <- 2            # Number of clusters in SSL (Cluster 1 is skipped)
+kClusters <- 9            # Number of clusters in SSL (Cluster 1 is skipped)
 outputFile <- "model_predictions.csv"  # file save predictions of each model
 
 # Set target columns and convert binary target to factor
