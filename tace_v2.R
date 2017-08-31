@@ -309,7 +309,7 @@ for(i in 1:ncol(predTranspose)) colnames(predTranspose)[i] <- paste0("obs_", i)
 predErrors <- data.frame(predErrors)
 colnames(predErrors) <- predErrorNames
 # Combine predErrors and pred
-predErrors <- cbind(predErrors, rank = rank(predErrors$error)
+predErrors <- cbind(predErrors, rank = rank(predErrors$error))
 
 # SQL-type join on datamatrix
 # @gpauloski: useful sql like commands to avoid indexing problems - https://stackoverflow.com/questions/1299871/how-to-join-merge-data-frames-inner-outer-left-right
