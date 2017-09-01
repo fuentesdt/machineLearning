@@ -180,7 +180,7 @@ for(h in 1:length(targets)) {
         # Loop for each in iters. See iters variable for more info
         for(k in 1:iters) {
           cat("Building Models: target=", targets[h], ", input=[", varMain[i],
-              ", ", names(varImg)[j], "]", sep="")
+              ", ", names(varImg)[j], "] k=",k, sep="")
           # Create copy of dataset to work in; prevents overwrites
           ds <- dataset
           # Add new columns to pred data frame to store results
@@ -197,8 +197,12 @@ for(h in 1:length(targets)) {
           xgbName <- paste0(targets[h], "_", varMain[i], "_", 
               names(varImg)[j], "_", "xgb")
 
+          # error check
+          if( is.null(varImg[[j]]) & (names(varImg)[j] != "nullModel") ) {
+            cat("skip me\n" , sep="")
+            break
           # If k = 1, perform supervised learning
-          if(k == 1) {
+          } else if(k == 1) {
             cat(", Supervised: ",  sep="")
             # Build input var list by combining baseline and imgData vars
             input <- c(varMain[[i]], varImg[[j]])
@@ -211,7 +215,7 @@ for(h in 1:length(targets)) {
 
           # Else k != 1, perfrom semi-supervised learning
           # Only run clustering if  img data !null
-          } else if(!(is.null(varImg[[j]]))) {
+          } else if ( !is.null(varImg[[j]])) {
             cat(", Semi-super (k=", k, "): ", sep="")
             rfName <- paste0(rfName, "_k", k)
             rfWName <- paste0(rfWName, "_k", k)
@@ -231,7 +235,8 @@ for(h in 1:length(targets)) {
             # Build input var list by combining baseline and imgData vars
             input <- c(varMain[[i]], varImg[[j]], "clusters")
             alwaysTry <- c(varMain[[i]], "clusters")
-          } else {
+          # error check
+          } else  {
             cat("skip me\n" , sep="")
             break
           } 
