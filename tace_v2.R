@@ -228,7 +228,7 @@ for(h in 1:length(targets)) {
             colnames(pred)[colnames(pred)=="d"] <- xgbName
             # Unsupervised random forest and add classifications to dataset
             rfUL <- randomForest(x=ds[,c(varMain[[i]], varImg[[j]])], 
-                ntree=1000, replace=FALSE, mtry=length(c(varMain[[i]], 
+                ntree=1001, replace=FALSE, mtry=length(c(varMain[[i]], 
                 varImg[[j]])), na.action=na.roughfix)
             ds <- cbind(ds, clusters = pam(1-rfUL$proximity, k=k, diss=TRUE, 
                 cluster.only = TRUE))
@@ -252,7 +252,7 @@ for(h in 1:length(targets)) {
             ## RANDOM FOREST ##
             #cat(", RF ", sep="")
             modelFormula <- as.formula( paste0(targets[h], " ~ . ") )
-            rf <- randomForest(modelFormula, data=ds[train,c(input,targets[h])], ntrees=10001,  replace=FALSE, na.action=na.roughfix)
+            rf <- randomForest(modelFormula, data=ds[train,c(input,targets[h])], ntrees=1001,  replace=FALSE, na.action=na.roughfix)
             predInput = ds[m, input]
             ## Error check for one row ##
             if (!is.data.frame(predInput ) ) {
@@ -264,9 +264,9 @@ for(h in 1:length(targets)) {
             ## WEIGHTED RANDOM FOREST ##
             #cat(", WRF ", sep="")
             if(!(is.null(varImg[[j]]))) {
-            rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=10001, always.split.variable=alwaysTry)
+            rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=1001, always.split.variable=alwaysTry)
             } else {
-            rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=10001 )
+            rfW <- ranger(modelFormula,  data=ds[train,c(input,targets[h])], num.trees=1001 )
             } 
             pred[m, rfWName] <- predict(rfW, predInput )$predictions
 
@@ -285,8 +285,8 @@ for(h in 1:length(targets)) {
                 "label" = ifelse(ds[train,targets[h]] == 1, 0, 1))
             tstList <- list("data" = as.matrix(ds[m,input]), 
                 "label" = ifelse(ds[m,targets[h]] == 1, 0, 1))
-            bst <- xgboost(trnList$data, label=trnList$label, nrounds=101, 
-                 objective="binary:logistic", verbose=1)
+            bst <- xgboost(trnList$data, label=trnList$label, nrounds=501, 
+                 objective="binary:logistic", verbose=0)
             pred[m,xgbName] <- ifelse(round(predict(bst, 
                 tstList$data)) == 0, 1, 2)
 
