@@ -319,6 +319,7 @@ predErrors <- cbind(predErrors, rank = rank(predErrors$error))
 # SQL-type join on datamatrix
 # @gpauloski: useful sql like commands to avoid indexing problems - https://stackoverflow.com/questions/1299871/how-to-join-merge-data-frames-inner-outer-left-right
 # STYLE: @gpauloski - SQL is your friend
+# use modelID as  row key to id for join -  https://www.mongodb.com/nosql-explained
 predMerge <- merge( y=predTranspose, x=predErrors ,by.y="row.names", by.x="modelID" )
 
 # Write predErrors to csv
