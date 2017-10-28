@@ -189,5 +189,7 @@ source("cindex.R")
 #   install.packages("compareC",repos='http://cran.us.r-project.org')
 # cindex(actual values, predicted values)
 # FIXME - @gpauloski -does your cindex function cause namespace problems with the  randomForestSRC:::cindex function ? 
+# @fuentesdt - I don't think so. It looks like the rfSRC cindex is not exported with the package's namespace effectively
+# making it a private function. Maybe put a print flag in my cindex function then run the script to see if it works?
 c_ind <- cindex(crs$dataset[crs$test,crs$target], predict(crs$survival, testdata))
 cat("C-index =", c_ind, "\n")

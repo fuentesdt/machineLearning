@@ -49,7 +49,6 @@ for(i in 1:length(varMain)) {
                                            ))
 }
 
-
 # Create list of img data subsets
 # @gpauloski null model should be without imaging
 ## NULL Model is without image features Selection ##
